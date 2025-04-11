@@ -6,6 +6,10 @@ const Maps = () => {
     const position = [-6.5950, 106.8166]
   return (
     <div>
+       <form className="d-flex">
+        <input className="form-control me-2" type="search" placeholder="Search" aria-label="Search"/>
+        <button className="btn btn-outline-success" type="submit">Search</button>
+      </form>
         <MapContainer center={position} zoom={13} scrollWheelZoom={false} style={{width: '100%', height: '100vh'}}>
             
             <TileLayer  
