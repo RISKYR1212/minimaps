@@ -6,6 +6,7 @@ import { Route, Routes, ServerRouter } from 'react-router-dom';
 import Home from "./pages/Home"
 import Navbar  from './componen/Navbar';
 import Maps from './pages/Maps'
+import Fasfield from './pages/Fasfield'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -16,7 +17,8 @@ function App() {
     {/* //Home Route// */}
     <Routes>
       <Route path="/" element={<Home/>}/>
-      <Route path="/maps" element={<Maps />}/>
+      <Route path="/Maps" element={<Maps />}/>
+      <Route path="/Fasfield" element={<Fasfield/>}/>
       
       
     </Routes>
