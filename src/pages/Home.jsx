@@ -1,29 +1,50 @@
 import React from 'react';
+import { Carousel } from 'react-bootstrap';
 
 const Home = () => {
   return (
     <div>
-      <div id="carouselExampleInterval" className="carousel slide" data-bs-ride="carousel">
-        <div className="carousel-inner">
-          <div className="carousel-item active" data-bs-interval="10000">
-            <img src="https://tse4.mm.bing.net/th?id=OIP.UYmuwIxRJGvoEelfr5BBHQHaEK&pid=Api&P=0&h=180" className="d-block w-100" alt="Slide 1" />
-          </div>
-          <div className="carousel-item" data-bs-interval="2000">
-            <img src="https://tse3.mm.bing.net/th?id=OIP.hk75vd99Twsu7xUdhFW1xgHaEK&pid=Api&P=0&h=180" className="d-block w-100" alt="Slide 2" />
-          </div>
-          <div className="carousel-item">
-            <img src="https://tse3.mm.bing.net/th?id=OIP.L1AGkZn_IqqPdViFMhCt-wHaD4&pid=Api&P=0&h=180" className="d-block w-100" alt="Slide 3" />
-          </div>
-        </div>
-        <button className="carousel-control-prev" type="button" data-bs-target="#carouselExampleInterval" data-bs-slide="prev">
-          <span className="carousel-control-prev-icon" aria-hidden="true"></span>
-          <span className="visually-hidden">Previous</span>
-        </button>
-        <button className="carousel-control-next" type="button" data-bs-target="#carouselExampleInterval" data-bs-slide="next">
-          <span className="carousel-control-next-icon" aria-hidden="true"></span>
-          <span className="visually-hidden">Next</span>
-        </button>
-      </div>
+      <Carousel fade interval={3000} pause={false}>
+        <Carousel.Item>
+          <img className="d-block w-100" src="https://img.freepik.com/free-vector/successful-partnership-negotiation-partners-handshaking_335657-2453.jpg?t=st=1744489227~exp=1744492827~hmac=3b06da676a9b65a34935687a1b065f3400fcf481ab88535bdfb7e45c274e662b&w=996" alt="Slide 1" />
+        </Carousel.Item>
+        <Carousel.Item>
+          <img
+            className="d-block w-100"
+            src="https://img.freepik.com/free-vector/businessman-table-using-laptop-with-ethernet-connection-ethernet-connection-lan-connection-technology-ethernet-network-system-concept_335657-2287.jpg"
+            alt="Slide 2"
+          />
+        </Carousel.Item>
+
+        <Carousel.Item>
+          <img
+            className="d-block w-100"
+            src="https://img.freepik.com/free-vector/modern-technology-composition-with-isometric-view_23-2147940847.jpg"
+            alt="Slide 3"
+          />
+        </Carousel.Item>
+      </Carousel>
+      {/* Custom navigation */}
+      {/* <button
+        className="carousel-control-next"
+        type=" "
+        onClick={() => document.querySelector('.carousel').carousel('next')}
+        style={{
+          fontStyle: 'revert-layer',
+          position: 'absolute',
+          top: '50%',
+          left: '800px',
+          backgroundColor: 'rgba(16, 161, 187, 0.4)',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          fontWeight: 'bold',
+          textAlign: 'center'
+          // textShadow: '2px 2px 8px rgba(0, 0, 0, 0.7)'
+        }}
+      >
+        BISMILLAHHIRRAHMANIRRAHIM
+      </button> */}
     </div>
   );
 };

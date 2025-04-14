@@ -6,18 +6,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Container, Row, Col, Card, Button, Form, InputGroup, Badge, Alert } from 'react-bootstrap';
-import {
-  Trash,
-  GripVertical,
-  FileEarmarkText,
-  ArrowLeft,
-  CheckCircle,
-  FilePdf,
-  FileExcel,
-  PlusCircle,
-  ListUl,
-  Upload
-} from 'react-bootstrap-icons';
+import { Trash, GripVertical, FileEarmarkText, ArrowLeft, CheckCircle, FilePdf, FileExcel, PlusCircle, ListUl, Upload } from 'react-bootstrap-icons';
 
 const fieldTypes = [
   { id: '1', label: 'Text Input', type: 'text', icon: 'text-left' },
@@ -193,7 +182,7 @@ const Fastfield = () => {
           fileDiv.className = 'mb-2';
 
           const fileName = document.createElement('div');
-          fileName.textContent = `📄 ${item.file.name} (${Math.round(item.file.size / 1024)} KB)`;
+          fileName.textContent = ` ${item.file.name} (${Math.round(item.file.size / 1024)} KB)`;
           fileDiv.appendChild(fileName);
 
           if (item.preview) {
@@ -456,7 +445,7 @@ const Fastfield = () => {
                 />
               </Form.Group>
               <Form.Group>
-                <Form.Label> Description (Optional) </Form.Label>
+                <Form.Label> Description  </Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={2}
