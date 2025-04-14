@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import {Card, Button, Form, Dropdown, Modal, InputGroup, FormControl} from 'react-bootstrap'
+import { Card, Button, Form, Dropdown, Modal, InputGroup, FormControl} from 'react-bootstrap'
 import * as toGeoJSON from '@tmcw/togeojson'
 
 const Maps = () => {
@@ -16,7 +16,7 @@ const Maps = () => {
   const polylineOption = { color: 'blue' }
 
   const [layers, setLayers] = useState([
-    { nama: 'Lapisan tanpa judul', visible: true, Marker: [] }
+    { nama: 'Lapisan tanpa judul', visible: true, Marker: [], Polyline: [] }
   ])
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [selectedLayerIndex, setSelectedLayerIndex] = useState(null)
@@ -31,10 +31,10 @@ const Maps = () => {
   const addNewLayer = () => {
     setLayers([
       ...layers,
-      { nama: 'Lapisan baru', visible: true, Marker: [] }
+      { nama: 'Lapisan baru', visible: true, Marker: [], Polyline: [] }
     ])
   }
-
+  
   const deleteLayer = index => {
     if (window.confirm("Yakin ingin menghapus lapisan ini?")) {
       const updated = [...layers]
@@ -42,13 +42,14 @@ const Maps = () => {
       setLayers(updated)
     }
   }
-
+  
   const handleRename = () => {
     const updated = [...layers]
     updated[selectedLayerIndex].nama = renameInput
     setLayers(updated)
     setShowRenameModal(false)
   }
+  
 
   const handleKMLImport = (event, layerIndex) => {
     const file = event.target.files[0]
@@ -60,16 +61,28 @@ const Maps = () => {
       const kml = parser.parseFromString(e.target.result, 'text/xml')
       const geojson = toGeoJSON.kml(kml)
 
-      const newMarkers = geojson.features
-        .filter(f => f.geometry.type === 'Point')
-        .map((f, i) => ({
-          lat: f.geometry.coordinates[1],
-          long: f.geometry.coordinates[0],
-          label: f.properties.name || `Point ${i + 1}`
-        }))
+      const newMarkers = []
+      const newPolylines = []
+
+      geojson.features.forEach((f, i) => {
+        if (f.geometry.type === 'Point') {
+          newMarkers.push({
+            lat: f.geometry.coordinates[1],
+            long: f.geometry.coordinates[0],
+            label: f.properties.name || `Point ${i + 1}`
+          })
+        } else if (f.geometry.type === 'LineString') {
+          const coords = f.geometry.coordinates.map(c => [c[1], c[0]]) // lat, long
+          newPolylines.push({
+            positions: coords,
+            label: f.properties.name || `Polyline ${i + 1}`
+          })
+        }
+      })
 
       const updated = [...layers]
       updated[layerIndex].Marker.push(...newMarkers)
+      updated[layerIndex].Polyline.push(...newPolylines)
       setLayers(updated)
     }
 
@@ -157,6 +170,15 @@ const Maps = () => {
                   <Marker key={`marker-${mIdx}`} position={[marker.lat, marker.long]}>
                     <Popup>{marker.label}</Popup>
                   </Marker>
+                ))}
+                {layer.Polyline.map((line, lIdx) => (
+                  <Polyline
+                    key={`polyline-${lIdx}`}
+                    positions={line.positions}
+                    pathOptions={{ color: 'red' }}
+                  >
+                    <Popup>{line.label}</Popup>
+                  </Polyline>
                 ))}
               </LayerGroup>
             )

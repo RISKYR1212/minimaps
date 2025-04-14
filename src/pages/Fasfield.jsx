@@ -109,7 +109,7 @@ const Fastfield = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    
+
     const processedFiles = await Promise.all(
       Array.from(files).map(file => {
         return new Promise((resolve) => {
@@ -142,7 +142,7 @@ const Fastfield = () => {
       [fieldId]: 'uploading'
     }));
 
-    
+
     const totalSize = processedFiles.reduce((sum, item) => sum + item.file.size, 0);
     let uploadedSize = 0;
 
@@ -166,10 +166,10 @@ const Fastfield = () => {
   const exportToPDF = async () => {
     const element = formRef.current;
 
-    
+
     const clone = element.cloneNode(true);
 
-    
+
     const fileContainers = clone.querySelectorAll('.file-upload-container');
     fileContainers.forEach(container => {
       const fieldId = container.id.replace('file-container-', '');
@@ -199,25 +199,25 @@ const Fastfield = () => {
           previewDiv.appendChild(fileDiv);
         });
 
-        
+
         container.parentNode.replaceChild(previewDiv, container);
       }
     });
 
-   
+
     const elementsToHide = clone.querySelectorAll('.progress, .alert, .upload-status, .file-input');
     elementsToHide.forEach(el => el.style.display = 'none');
 
-    
+
     clone.style.position = 'absolute';
     clone.style.left = '-9999px';
     document.body.appendChild(clone);
 
-   
+
     const canvas = await html2canvas(clone, {
-      scale: 2, 
+      scale: 2,
       logging: false,
-      useCORS: true 
+      useCORS: true
     });
 
     document.body.removeChild(clone);
@@ -414,7 +414,7 @@ const Fastfield = () => {
           <div className="d-flex justify-content-between align-items-center">
             <h1 className="mb-0">
               <FileEarmarkText className="me-2" />
-              Report 
+              Report
             </h1>
             <div>
               <Button variant="danger" onClick={resetForm} className="me-2">
