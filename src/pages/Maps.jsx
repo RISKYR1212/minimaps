@@ -146,7 +146,7 @@ const Maps = () => {
         <Polyline positions={polylinePositions} pathOptions={polylineOption} />
         {Location.map((L, index) => (
           <Marker key={index} position={[L.lat, L.long]}>
-            <Popup>rumah saya {index + 1}</Popup>
+            <Popup>marker {index + 1}</Popup>
           </Marker>
         ))}
         {layers.map(

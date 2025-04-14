@@ -1,0 +1,39 @@
+import React, { useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvent } from 'react-leaflet';
+
+function LocationMarker({ onClickMap }) {
+  useMapEvent('click', (e) => {
+    const { lat, lng } = e.latlng;
+    onClickMap(lat, lng);
+  });
+
+  return null;
+}
+
+function MyMap() {
+  const [position, setPosition] = useState(null);
+
+  const handleMapClick = (lat, lng) => {
+    setPosition({ lat, lng });
+    console.log('Clicked location:', lat, lng);
+  };
+
+  return (
+    <MapContainer center={[-6.2, 106.8]} zoom={13} style={{ height: '100vh', width: '100%' }}>
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="© OpenStreetMap contributors"
+      />
+      <LocationMarker onClickMap={handleMapClick} />
+      {position && (
+        <Marker position={[position.lat, position.lng]}>
+          <Popup>
+            Latitude: {position.lat} <br /> Longitude: {position.lng}
+          </Popup>
+        </Marker>
+      )}
+    </MapContainer>
+  );
+}
+
+export default MyMap;
