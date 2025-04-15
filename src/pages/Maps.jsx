@@ -84,7 +84,7 @@ const Maps = () => {
 
         updated[layerIndex].Marker.push(...newMarkers)
         updated[layerIndex].Polyline.push(...newPolylines)
-        setLayers([...updated]) // target upload kml
+        setLayers([...updated]) // push file atau target
       }
 
       reader.readAsText(file)
