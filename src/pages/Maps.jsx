@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Card, Button, Form, Dropdown, Modal, InputGroup, FormControl} from 'react-bootstrap'
+import { Card, Button, Form, Dropdown, Modal, InputGroup, FormControl } from 'react-bootstrap'
 import * as toGeoJSON from '@tmcw/togeojson'
 
 const Maps = () => {
@@ -34,7 +34,7 @@ const Maps = () => {
       { nama: 'Lapisan baru', visible: true, Marker: [], Polyline: [] }
     ])
   }
-  
+
   const deleteLayer = index => {
     if (window.confirm("Yakin ingin menghapus lapisan ini?")) {
       const updated = [...layers]
@@ -42,51 +42,56 @@ const Maps = () => {
       setLayers(updated)
     }
   }
-  
+
   const handleRename = () => {
     const updated = [...layers]
     updated[selectedLayerIndex].nama = renameInput
     setLayers(updated)
     setShowRenameModal(false)
   }
-  
 
   const handleKMLImport = (event, layerIndex) => {
-    const file = event.target.files[0]
-    if (!file) return
+    const files = event.target.files
+    if (!files || files.length === 0) return
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const parser = new DOMParser()
-      const kml = parser.parseFromString(e.target.result, 'text/xml')
-      const geojson = toGeoJSON.kml(kml)
+    const updated = [...layers]
 
-      const newMarkers = []
-      const newPolylines = []
+    Array.from(files).forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const parser = new DOMParser()
+        const kml = parser.parseFromString(e.target.result, 'text/xml')
+        const geojson = toGeoJSON.kml(kml)
 
-      geojson.features.forEach((f, i) => {
-        if (f.geometry.type === 'Point') {
-          newMarkers.push({
-            lat: f.geometry.coordinates[1],
-            long: f.geometry.coordinates[0],
-            label: f.properties.name || `Point ${i + 1}`
-          })
-        } else if (f.geometry.type === 'LineString') {
-          const coords = f.geometry.coordinates.map(c => [c[1], c[0]]) // lat, long
-          newPolylines.push({
-            positions: coords,
-            label: f.properties.name || `Polyline ${i + 1}`
-          })
-        }
-      })
+        const newMarkers = []
+        const newPolylines = []
 
-      const updated = [...layers]
-      updated[layerIndex].Marker.push(...newMarkers)
-      updated[layerIndex].Polyline.push(...newPolylines)
-      setLayers(updated)
-    }
+        geojson.features.forEach((f, i) => {
+          if (f.geometry.type === 'Point') {
+            newMarkers.push({
+              lat: f.geometry.coordinates[1],
+              long: f.geometry.coordinates[0],
+              label: f.properties.name || `Point ${i + 1}`
+            })
+          } else if (f.geometry.type === 'LineString') {
+            const coords = f.geometry.coordinates.map(c => [c[1], c[0]])
+            newPolylines.push({
+              positions: coords,
+              label: f.properties.name || `Polyline ${i + 1}`
+            })
+          }
+        })
 
-    reader.readAsText(file)
+        updated[layerIndex].Marker.push(...newMarkers)
+        updated[layerIndex].Polyline.push(...newPolylines)
+        setLayers([...updated]) // target upload kml
+      }
+
+      reader.readAsText(file)
+    })
+
+    // menambahkan file fo yang sama
+    event.target.value = null
   }
 
   return (
@@ -136,6 +141,7 @@ const Maps = () => {
                         type="file"
                         accept=".kml"
                         hidden
+                        multiple
                         onChange={(e) => handleKMLImport(e, idx)}
                       />
                     </Dropdown.Item>
