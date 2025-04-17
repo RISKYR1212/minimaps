@@ -14,10 +14,10 @@ const Core = () => {
     { id: 3, position: [51.525, -0.11], color: coreColors[2] },
   ]);
 
-  
+
   const createIcon = (color) => {
     return new Icon({
-      iconUrl: `https://www.google.com/intl/en_ALL/mapfiles/marker.png`, 
+      iconUrl: `https://www.google.com/intl/en_ALL/mapfiles/marker.png`,
       iconAnchor: [12, 41],
       popupAnchor: [1, -34],
       shadowSize: [41, 41],
