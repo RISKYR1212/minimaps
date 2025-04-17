@@ -4,9 +4,9 @@ import App from './App.jsx'
 import { BrowserRouter} from 'react-router-dom'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import { MapContainer } from 'react-leaflet/MapContainer'
-import { TileLayer } from 'react-leaflet/TileLayer'
-import { useMap } from 'react-leaflet/hooks'
+// import { MapContainer } from 'react-leaflet/MapContainer'
+// import { TileLayer } from 'react-leaflet/TileLayer'
+// import { useMap } from 'react-leaflet/hooks'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>

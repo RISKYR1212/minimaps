@@ -7,6 +7,7 @@ import Home from "./pages/Home"
 import Navbar  from './componen/Navbar';
 import Maps from './pages/Maps'
 import Fasfield from './pages/Fasfield'
+import Core from './pages/Core'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -19,6 +20,7 @@ function App() {
       <Route path="/" element={<Home/>}/>
       <Route path="/Maps" element={<Maps />}/>
       <Route path="/Fasfield" element={<Fasfield/>}/>
+      <Route path="/Core" element={<Core/>}/>
       
       
     </Routes>

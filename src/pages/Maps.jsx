@@ -81,10 +81,10 @@ const Maps = () => {
             })
           }
         })
-
+        // push file atau target//
         updated[layerIndex].Marker.push(...newMarkers)
         updated[layerIndex].Polyline.push(...newPolylines)
-        setLayers([...updated]) // push file atau target
+        setLayers([...updated])
       }
 
       reader.readAsText(file)
@@ -181,7 +181,7 @@ const Maps = () => {
                   <Polyline
                     key={`polyline-${lIdx}`}
                     positions={line.positions}
-                    pathOptions={{ color: 'red' }}
+                    pathOptions={{ color: 'blue' }}
                   >
                     <Popup>{line.label}</Popup>
                   </Polyline>
