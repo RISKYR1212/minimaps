@@ -1,214 +1,187 @@
-// ... import tetap sama
 import React, { useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup } from 'react-leaflet'
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  LayerGroup
+} from 'react-leaflet'
+import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Card, Button, Form, Dropdown, Modal, InputGroup, FormControl } from 'react-bootstrap'
+import { Card, Form, FormControl, Button } from 'react-bootstrap'
 import * as toGeoJSON from '@tmcw/togeojson'
+import JSZip from 'jszip'
 
-const Maps = () => {
-  const Location = [
-    { lat: -6.511809, long: 106.8128 },
-    { lat: -6.512583, long: 106.812691 },
-    { lat: -6.513749, long: 106.813577 }
-  ]
+// Fix missing marker icons in Leaflet
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+})
 
-  const polylinePositions = Location.map(loc => [loc.lat, loc.long])
-  const polylineOption = { color: 'blue' }
-
+function Maps() {
+  const defaultLocation = { lat: -6.511809, lng: 106.8128 }
   const [layers, setLayers] = useState([
-    { nama: 'Lapisan tanpa judul', visible: true, Marker: [], Polyline: [] }
+    { name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }
   ])
-  const [showRenameModal, setShowRenameModal] = useState(false)
-  const [selectedLayerIndex, setSelectedLayerIndex] = useState(null)
-  const [renameInput, setRenameInput] = useState('')
 
-  const toggleLayerVisibility = index => {
-    const updated = [...layers]
-    updated[index].visible = !updated[index].visible
-    setLayers(updated)
-  }
+  const parseFile = async (file, idx) => {
+    try {
+      let content = ''
+      if (file.name.toLowerCase().endsWith('.kmz')) {
+        const buffer = await file.arrayBuffer()
+        const zip = await JSZip.loadAsync(buffer)
+        const kmlEntry = Object.keys(zip.files).find(name => name.match(/\.kml$/i))
+        if (!kmlEntry) throw new Error('KMZ tidak mengandung file .kml')
+        content = await zip.file(kmlEntry).async('text')
+      } else {
+        content = await file.text()
+      }
 
-  const addNewLayer = () => {
-    setLayers([
-      ...layers,
-      { nama: 'Lapisan baru', visible: true, Marker: [], Polyline: [] }
-    ])
-  }
-
-  const deleteLayer = index => {
-    if (window.confirm("Yakin ingin menghapus lapisan ini?")) {
-      const updated = [...layers]
-      updated.splice(index, 1)
-      setLayers(updated)
+      const kmlDom = new DOMParser().parseFromString(content, 'text/xml')
+      const geojson = toGeoJSON.kml(kmlDom)
+      updateLayer(geojson, file.name.replace(/\.(kml|kmz)$/i, ''), idx)
+    } catch (err) {
+      console.error('Gagal memproses file:', err)
     }
   }
 
-  const handleRename = () => {
-    const updated = [...layers]
-    updated[selectedLayerIndex].nama = renameInput
-    setLayers(updated)
-    setShowRenameModal(false)
-  }
+  const updateLayer = (geojson, name, idx) => {
+    const markers = []
+    const polylines = []
 
-  const handleKMLImport = (event, layerIndex) => {
-    const files = event.target.files
-    if (!files || files.length === 0) return
+    geojson.features?.forEach((feature, i) => {
+      const label = feature.properties?.name || `${feature.geometry.type} ${i + 1}`
 
-    const updated = [...layers]
-
-    Array.from(files).forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const parser = new DOMParser()
-        const kml = parser.parseFromString(e.target.result, 'text/xml')
-        const geojson = toGeoJSON.kml(kml)
-
-        const newMarkers = []
-        const newPolylines = []
-
-        geojson.features.forEach((f, i) => {
-          if (f.geometry.type === 'Point') {
-            newMarkers.push({
-              lat: f.geometry.coordinates[1],
-              long: f.geometry.coordinates[0],
-              label: f.properties.name || `Point ${i + 1}`
-            })
-          } else if (f.geometry.type === 'LineString') {
-            const coords = f.geometry.coordinates.map(c => [c[1], c[0]])
-            newPolylines.push({
-              positions: coords,
-              label: f.properties.name || `Polyline ${i + 1}`
-            })
-          }
-        })
-        // push file atau target//
-        updated[layerIndex].Marker.push(...newMarkers)
-        updated[layerIndex].Polyline.push(...newPolylines)
-        setLayers([...updated])
+      if (feature.geometry.type === 'Point') {
+        const [lng, lat] = feature.geometry.coordinates
+        markers.push({ lat, lng, label })
+      } else if (feature.geometry.type === 'LineString') {
+        const coords = feature.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+        polylines.push({ positions: coords, label })
       }
-
-      reader.readAsText(file)
     })
 
-    // menambahkan file fo yang sama
-    event.target.value = null
+    setLayers(prev => {
+      const newLayers = [...prev]
+      newLayers[idx] = { ...newLayers[idx], name, markers, polylines }
+      return newLayers
+    })
+  }
+
+  const handleFileChange = (e, idx) => {
+    const file = e.target.files[0]
+    if (file) parseFile(file, idx)
+    e.target.value = ''
+  }
+
+  const addLayer = () => {
+    setLayers(prev => [
+      ...prev,
+      {
+        name: `Layer ${prev.length + 1}`,
+        visible: true,
+        markers: [],
+        polylines: [],
+        color: `#${Math.floor(Math.random() * 16777215).toString(16)}`
+      }
+    ])
+  }
+
+  const toggleVisibility = idx => {
+    setLayers(prev =>
+      prev.map((layer, i) => i === idx ? { ...layer, visible: !layer.visible } : layer)
+    )
+  }
+
+  const updateColor = (idx, color) => {
+    setLayers(prev =>
+      prev.map((layer, i) => i === idx ? { ...layer, color } : layer)
+    )
   }
 
   return (
-    <div className="position-relative" style={{ height: '100vh', width: '100%' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+      {/* Sidebar */}
       <div style={{
         position: 'absolute',
         top: 20,
         left: 20,
-        width: '280px',
+        width: 300,
         maxHeight: '90vh',
         overflowY: 'auto',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        padding: '15px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        padding: 12,
+        background: 'rgba(255,255,255,0.9)',
+        borderRadius: 8,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
         zIndex: 1000
       }}>
-        <h5 className="fw-bold">Peta tanpa judul</h5>
-
-        <div className="d-flex gap-2 mb-3">
-          <Button variant="primary" size="sm" onClick={addNewLayer}>Tambahkan lapisan</Button>
-          <Button variant="secondary" size="sm">Bagikan</Button>
-        </div>
+        <h5>Layers KML/KMZ</h5>
+        <Button size="sm" onClick={addLayer} className="mb-3">
+          Tambah Layer
+        </Button>
 
         {layers.map((layer, idx) => (
-          <Card key={idx} className="mb-2">
+          <Card key={idx} className="mt-2">
             <Card.Body>
-              <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center mb-2">
                 <Form.Check
                   type="checkbox"
                   checked={layer.visible}
-                  onChange={() => toggleLayerVisibility(idx)}
-                  label={layer.nama}
+                  onChange={() => toggleVisibility(idx)}
+                  label={layer.name}
+                  className="me-2"
                 />
-                <Dropdown>
-                  <Dropdown.Toggle variant="light" size="sm" id="dropdown-basic">⋮</Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item onClick={() => {
-                      setSelectedLayerIndex(idx)
-                      setRenameInput(layer.nama)
-                      setShowRenameModal(true)
-                    }}>Rename</Dropdown.Item>
-                    <Dropdown.Item onClick={() => deleteLayer(idx)}>Hapus</Dropdown.Item>
-                    <Dropdown.Item as="label">
-                      Import KML
-                      <input
-                        type="file"
-                        accept=".kml"
-                        hidden
-                        multiple
-                        onChange={(e) => handleKMLImport(e, idx)}
-                      />
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown>
+                <FormControl
+                  type="color"
+                  value={layer.color}
+                  onChange={e => updateColor(idx, e.target.value)}
+                  style={{ width: 30, height: 30, padding: 1 }}
+                />
               </div>
+              <input
+                type="file"
+                accept=".kml,.kmz"
+                className="form-control form-control-sm"
+                onChange={e => handleFileChange(e, idx)}
+              />
             </Card.Body>
           </Card>
         ))}
       </div>
 
+      {/* Map */}
       <MapContainer
-        center={[Location[0].lat, Location[0].long]}
+        center={[defaultLocation.lat, defaultLocation.lng]}
         zoom={18}
-        scrollWheelZoom={true}
-        style={{ width: '100%', height: '100%' }}>
+        style={{ width: '100%', height: '100%' }}
+      >
         <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="© OpenStreetMap contributors"
         />
-        <Polyline positions={polylinePositions} pathOptions={polylineOption} />
-        {Location.map((L, index) => (
-          <Marker key={index} position={[L.lat, L.long]}>
-            <Popup>marker {index + 1}</Popup>
-          </Marker>
-        ))}
-        {layers.map(
-          (layer, idx) =>
-            layer.visible && (
-              <LayerGroup key={`layer-${idx}`}>
-                {layer.Marker.map((marker, mIdx) => (
-                  <Marker key={`marker-${mIdx}`} position={[marker.lat, marker.long]}>
-                    <Popup>{marker.label}</Popup>
-                  </Marker>
-                ))}
-                {layer.Polyline.map((line, lIdx) => (
-                  <Polyline
-                    key={`polyline-${lIdx}`}
-                    positions={line.positions}
-                    pathOptions={{ color: 'blue' }}
-                  >
-                    <Popup>{line.label}</Popup>
-                  </Polyline>
-                ))}
-              </LayerGroup>
-            )
-        )}
-      </MapContainer>
 
-      <Modal show={showRenameModal} onHide={() => setShowRenameModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Ubah Nama Lapisan</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <InputGroup>
-            <FormControl
-              value={renameInput}
-              onChange={(e) => setRenameInput(e.target.value)}
-              placeholder="Nama lapisan baru"
-            />
-          </InputGroup>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowRenameModal(false)}>Batal</Button>
-          <Button variant="primary" onClick={handleRename}>Simpan</Button>
-        </Modal.Footer>
-      </Modal>
+        {layers.map((layer, idx) => layer.visible && (
+          <LayerGroup key={idx}>
+            {layer.markers.map((marker, i) => (
+              <Marker key={i} position={[marker.lat, marker.lng]}>
+                <Popup><strong>{marker.label}</strong></Popup>
+              </Marker>
+            ))}
+            {layer.polylines.map((polyline, i) => (
+              <Polyline
+                key={i}
+                positions={polyline.positions}
+                pathOptions={{ color: layer.color }}
+              >
+                <Popup><strong>{polyline.label}</strong></Popup>
+              </Polyline>
+            ))}
+          </LayerGroup>
+        ))}
+      </MapContainer>
     </div>
   )
 }

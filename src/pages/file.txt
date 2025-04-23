@@ -37,3 +37,17 @@ function MyMap() {
 }
 
 export default MyMap;
+
+
+
+
+          NOTE FITUR TAMBAHAN FILE MAPS
+tambahkan fitur edit pada maps
+isi perangkat dalam pop termasuk slotport sfp dan otb
+sudah bisa membaca file kml/kmz
+menambahkan notification ketika ada penambahan titik
+bisa tarik summary data core by excel dan pdf per segment
+menambahkan fitur dalam maps sampai client
+bisa Merubah pin dalam maps
+
+

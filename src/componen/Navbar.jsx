@@ -18,6 +18,7 @@ const Navbar = () => {
         <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/Maps">Maps</Link>
         <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="Fasfield">Fastfield</Link>
         <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="Core">AlokasiCore</Link>
+        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="Osp">OSP</Link>
         {/* <Link className="nav-link disabled" aria-disabled="true">D</Link> */}
       </div>
     </div>
