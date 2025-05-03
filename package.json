@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
+    "@mapbox/togeojson": "^0.16.2",
     "@tmcw/togeojson": "^7.1.1",
+    "@xmldom/xmldom": "^0.9.8",
     "bootstrap": "^5.3.5",
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
@@ -20,6 +22,7 @@
     "leaflet-control-geocoder": "^3.1.0",
     "leaflet-draw": "^1.0.4",
     "leaflet-kml": "^1.0.1",
+    "leaflet-omnivore": "^0.3.4",
     "leaflet.awesome-markers": "^2.0.5",
     "react": "^18.2.0",
     "react-bootstrap": "^2.10.9",
