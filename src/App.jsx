@@ -19,10 +19,10 @@ function App() {
     {/* //Home Route// */}
     <Routes>
       <Route path="/" element={<Home/>}/>
-      <Route path="/Maps" element={<Maps />}/>
-      <Route path="/Fasfield" element={<Fasfield/>}/>
-      <Route path="/Core" element={<Core/>}/>
-      <Route path="/Osp" element={<Osp/>}/>
+      <Route path="/maps" element={<Maps />}/>
+      <Route path="/fasfield" element={<Fasfield/>}/>
+      <Route path="/core" element={<Core/>}/>
+      <Route path="/osp" element={<Osp/>}/>
       
     </Routes>
     </>

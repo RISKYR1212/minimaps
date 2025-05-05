@@ -15,10 +15,10 @@ const Navbar = () => {
     <div className="collapse navbar-collapse" id="navbarNavAltMarkup">
       <div className="navbar-nav">
         <Link className="nav-link active" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} aria-current="page" to="/">Home</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/Maps">Maps</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="Fasfield">Fastfield</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="Core">AlokasiCore</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="Osp">OSP</Link>
+        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/maps">Maps</Link>
+        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/fasfield">Fastfield</Link>
+        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/core">AlokasiCore</Link>
+        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/osp">OSP</Link>
         {/* <Link className="nav-link disabled" aria-disabled="true">D</Link> */}
       </div>
     </div>
