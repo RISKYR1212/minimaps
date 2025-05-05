@@ -5,7 +5,7 @@ import { Trash, FileEarmarkText, FilePdf, FileExcel } from 'react-bootstrap-icon
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import logo from '../assets/logo-jlm.JPEG'; 
+import logo from '../assets/logo-jlm.jpeg'; 
 
 const Fastfield = () => {
   const cableOptions = [12, 24, 48, 96, 144, 288];
