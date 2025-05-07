@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Card, Form, FormControl, Button, InputGroup } from 'react-bootstrap'
+import { Card, Form, FormControl, Button } from 'react-bootstrap'
 import * as toGeoJSON from '@tmcw/togeojson'
 import JSZip from 'jszip'
 
@@ -14,7 +14,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
 })
 
-// Komponen untuk mencari lokasi di peta dan meletakkan marker
 function SearchLocationHandler({ query, onFound }) {
   const map = useMap()
 
@@ -127,6 +126,52 @@ function Maps() {
     )
   }
 
+  const generateKmlFromLayer = (layer) => {
+    const kmlHeader = `<?xml version="1.0" encoding="UTF-8"?>
+    <kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${layer.name}</name>`
+    const kmlFooter = `</Document></kml>`
+
+    const placemarks = []
+
+    for (const marker of layer.markers) {
+      placemarks.push(`
+        <Placemark>
+          <name>${marker.label}</name>
+          <Point>
+            <coordinates>${marker.lng},${marker.lat},0</coordinates>
+          </Point>
+        </Placemark>
+      `)
+    }
+
+    for (const line of layer.polylines) {
+      const coordStr = line.positions.map(([lat, lng]) => `${lng},${lat},0`).join(' ')
+      placemarks.push(`
+        <Placemark>
+          <name>${line.label}</name>
+          <Style><LineStyle><color>ff${layer.color.slice(1)}</color><width>3</width></LineStyle></Style>
+          <LineString>
+            <tessellate>1</tessellate>
+            <coordinates>${coordStr}</coordinates>
+          </LineString>
+        </Placemark>
+      `)
+    }
+
+    return `${kmlHeader}${placemarks.join('')}${kmlFooter}`
+  }
+
+  const downloadKml = (layer) => {
+    const kmlContent = generateKmlFromLayer(layer)
+    const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${layer.name}.kml`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
       {/* Sidebar */}
@@ -155,8 +200,6 @@ function Maps() {
           className="mb-2"
         />
 
-
-
         {layers
           .filter(layer => layer.name.toLowerCase().includes(layerFilter.toLowerCase()))
           .map((layer, idx) => (
@@ -180,9 +223,12 @@ function Maps() {
                 <input
                   type="file"
                   accept=".kml,.kmz"
-                  className="form-control form-control-sm"
+                  className="form-control form-control-sm mb-2"
                   onChange={e => handleFileChange(e, idx)}
                 />
+                <Button size="sm" variant="outline-success" className="w-100" onClick={() => downloadKml(layer)}>
+                  ⬇️ Download KML
+                </Button>
               </Card.Body>
             </Card>
           ))}

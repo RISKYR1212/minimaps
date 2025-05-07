@@ -24,27 +24,7 @@ const Home = () => {
           />
         </Carousel.Item>
       </Carousel>
-      {/* Custom navigation */}
-      {/* <button
-        className="carousel-control-next"
-        type=" "
-        onClick={() => document.querySelector('.carousel').carousel('next')}
-        style={{
-          fontStyle: 'revert-layer',
-          position: 'absolute',
-          top: '50%',
-          left: '800px',
-          backgroundColor: 'rgba(16, 161, 187, 0.4)',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '8px',
-          fontWeight: 'bold',
-          textAlign: 'center'
-          // textShadow: '2px 2px 8px rgba(0, 0, 0, 0.7)'
-        }}
-      >
-        BISMILLAHHIRRAHMANIRRAHIM
-      </button> */}
+      
     </div>
   );
 };
