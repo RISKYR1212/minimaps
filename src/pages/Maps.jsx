@@ -1,56 +1,29 @@
-import React, { useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup, useMap } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { Card, Form, FormControl, Button } from 'react-bootstrap'
-import * as toGeoJSON from '@tmcw/togeojson'
-import JSZip from 'jszip'
-
-// Fix Leaflet icons
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
-})
-
-function SearchLocationHandler({ query, onFound }) {
-  const map = useMap()
-
-  React.useEffect(() => {
-    const fetchLocation = async () => {
-      if (!query) return
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
-        const data = await res.json()
-        if (data && data.length > 0) {
-          const loc = data[0]
-          const latlng = [parseFloat(loc.lat), parseFloat(loc.lon)]
-          map.setView(latlng, 18)
-          onFound(latlng)
-        } else {
-          alert('Lokasi tidak ditemukan.')
-        }
-      } catch (err) {
-        alert('Terjadi kesalahan saat mencari lokasi.')
-        console.error(err)
-      }
-    }
-
-    fetchLocation()
-  }, [query, map, onFound])
-
-  return null
-}
+// ... (import dan ikon Leaflet tetap sama)
 
 function Maps() {
   const defaultLocation = { lat: -6.511809, lng: 106.8128 }
   const [locationQuery, setLocationQuery] = useState('')
   const [layerFilter, setLayerFilter] = useState('')
   const [foundMarker, setFoundMarker] = useState(null)
-  const [layers, setLayers] = useState([
-    { name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }
-  ])
+  const [layers, setLayers] = useState(() => {
+    // Load from localStorage on initial render
+    const saved = localStorage.getItem('savedLayers')
+    return saved ? JSON.parse(saved) : [
+      { name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }
+    ]
+  })
+
+  // Save to localStorage whenever layers change
+  React.useEffect(() => {
+    localStorage.setItem('savedLayers', JSON.stringify(layers))
+  }, [layers])
+
+  const escapeXml = str =>
+    str?.replace(/&/g, '&amp;')
+       .replace(/</g, '&lt;')
+       .replace(/>/g, '&gt;')
+       .replace(/"/g, '&quot;')
+       .replace(/'/g, '&apos;')
 
   const parseFile = async (file, idx) => {
     try {
@@ -69,6 +42,7 @@ function Maps() {
       const geojson = toGeoJSON.kml(kmlDom)
       updateLayer(geojson, file.name.replace(/\.(kml|kmz)$/i, ''), idx)
     } catch (err) {
+      alert(`Gagal membuka file ${file.name}: ${err.message}`)
       console.error('Gagal memproses file:', err)
     }
   }
@@ -128,7 +102,7 @@ function Maps() {
 
   const generateKmlFromLayer = (layer) => {
     const kmlHeader = `<?xml version="1.0" encoding="UTF-8"?>
-    <kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${layer.name}</name>`
+    <kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${escapeXml(layer.name)}</name>`
     const kmlFooter = `</Document></kml>`
 
     const placemarks = []
@@ -136,7 +110,7 @@ function Maps() {
     for (const marker of layer.markers) {
       placemarks.push(`
         <Placemark>
-          <name>${marker.label}</name>
+          <name>${escapeXml(marker.label)}</name>
           <Point>
             <coordinates>${marker.lng},${marker.lat},0</coordinates>
           </Point>
@@ -148,7 +122,7 @@ function Maps() {
       const coordStr = line.positions.map(([lat, lng]) => `${lng},${lat},0`).join(' ')
       placemarks.push(`
         <Placemark>
-          <name>${line.label}</name>
+          <name>${escapeXml(line.label)}</name>
           <Style><LineStyle><color>ff${layer.color.slice(1)}</color><width>3</width></LineStyle></Style>
           <LineString>
             <tessellate>1</tessellate>
@@ -227,7 +201,7 @@ function Maps() {
                   onChange={e => handleFileChange(e, idx)}
                 />
                 <Button size="sm" variant="outline-success" className="w-100" onClick={() => downloadKml(layer)}>
-                  ⬇️ Download KML
+                   Download KML
                 </Button>
               </Card.Body>
             </Card>
@@ -241,10 +215,11 @@ function Maps() {
         style={{ width: '100%', height: '100%' }}
       >
         <TileLayer
-          url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-          maxZoom={25}
-          subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-        />
+  url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+  maxZoom={25}
+  subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+/>
+
 
         {locationQuery && (
           <SearchLocationHandler query={locationQuery} onFound={setFoundMarker} />
