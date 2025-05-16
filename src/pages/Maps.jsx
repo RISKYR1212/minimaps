@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Card, Form, FormControl, Button } from 'react-bootstrap'
+import { Card, Form, FormControl, Button, Alert } from 'react-bootstrap'
 import * as toGeoJSON from '@tmcw/togeojson'
 import JSZip from 'jszip'
 
@@ -17,11 +17,11 @@ L.Icon.Default.mergeOptions({
 function SearchLocationHandler({ query, onFound }) {
   const map = useMap()
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchLocation = async () => {
       if (!query) return
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
         const data = await res.json()
         if (data && data.length > 0) {
           const loc = data[0]
@@ -50,6 +50,9 @@ function Maps() {
   const [foundMarker, setFoundMarker] = useState(null)
   const [sidebarVisible, setSidebarVisible] = useState(true)
   const [layerFilter, setLayerFilter] = useState('')
+  const [userLocation, setUserLocation] = useState(null)
+  const [geoError, setGeoError] = useState(null)
+
   const [layers, setLayers] = useState(() => {
     // Load dari localStorage kalau ada
     const saved = localStorage.getItem('layersData')
@@ -142,6 +145,18 @@ function Maps() {
     ])
   }
 
+  // Fungsi untuk menghapus layer
+  const removeLayer = (idx) => {
+    if (layers.length <= 1) {
+      alert('Anda harus memiliki setidaknya satu layer')
+      return
+    }
+    
+    if (window.confirm(`Apakah Anda yakin ingin menghapus layer "${layers[idx].name}"?`)) {
+      setLayers(prev => prev.filter((_, i) => i !== idx))
+    }
+  }
+
   const toggleVisibility = idx => {
     setLayers(prev =>
       prev.map((layer, i) => i === idx ? { ...layer, visible: !layer.visible } : layer)
@@ -198,6 +213,38 @@ function Maps() {
     a.download = `${layer.name}.kml`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  // Fungsi mendapatkan lokasi user
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError('Geolokasi tidak didukung oleh browser Anda.')
+      return
+    }
+    setGeoError(null)
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords
+        setUserLocation([latitude, longitude])
+        setFoundMarker([latitude, longitude])
+      },
+      error => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setGeoError('Izin lokasi ditolak.')
+            break
+          case error.POSITION_UNAVAILABLE:
+            setGeoError('Informasi lokasi tidak tersedia.')
+            break
+          case error.TIMEOUT:
+            setGeoError('Permintaan lokasi habis waktu.')
+            break
+          default:
+            setGeoError('Terjadi kesalahan saat mendapatkan lokasi.')
+        }
+        console.error(error)
+      }
+    )
   }
 
   return (
@@ -257,7 +304,18 @@ function Maps() {
             </Button>
           </Form>
 
-          <h5>🗂️ Layers KML/KMZ</h5>
+          <Button
+            variant="success"
+            size="sm"
+            className="mb-3 w-100"
+            onClick={getCurrentLocation}
+          >
+             Dapatkan Lokasi Saya
+          </Button>
+
+          {geoError && <Alert variant="danger">{geoError}</Alert>}
+
+          <h5> Layers KML/KMZ</h5>
           <Button size="sm" onClick={addLayer} className="mb-3 w-100">
             Tambah Layer
           </Button>
@@ -270,80 +328,134 @@ function Maps() {
           {layers
             .filter(layer => layer.name.toLowerCase().includes(layerFilter.toLowerCase()))
             .map((layer, idx) => (
-              <Card key={idx} className="mt-2">
+              <Card key={idx} className="mb-2">
                 <Card.Body>
-                  <div className="d-flex align-items-center mb-2">
-                    <Form.Check
-                      type="checkbox"
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <Form.Check 
+                      type="checkbox" 
+                      id={`visible-layer-${idx}`}
+                      label={`Tampilkan ${layer.name}`}
                       checked={layer.visible}
                       onChange={() => toggleVisibility(idx)}
-                      label={layer.name}
-                      className="me-2"
                     />
-                    <FormControl
-                      type="color"
-                      value={layer.color}
-                      onChange={e => updateColor(idx, e.target.value)}
-                      style={{ width: 30, height: 30 }}
-                    />
+                    <Button 
+                      variant="outline-danger" 
+                      size="sm" 
+                      onClick={() => removeLayer(idx)}
+                      disabled={layers.length <= 1}
+                    >
+                      Hapus
+                    </Button>
                   </div>
-                  <input
+                  <Form.Control
+                    type="text"
+                    value={layer.name}
+                    onChange={e => {
+                      const newName = e.target.value
+                      setLayers(prev => {
+                        const newLayers = [...prev]
+                        newLayers[idx].name = newName
+                        return newLayers
+                      })
+                    }}
+                    className="mt-1 mb-1"
+                    placeholder="Nama layer"
+                  />
+                  <Form.Control
+                    type="color"
+                    value={layer.color}
+                    title="Pilih warna layer"
+                    onChange={e => updateColor(idx, e.target.value)}
+                    className="mb-1"
+                  />
+                  <Form.Control
                     type="file"
                     accept=".kml,.kmz"
-                    className="form-control form-control-sm mb-2"
                     onChange={e => handleFileChange(e, idx)}
+                    className="mb-1"
                   />
-                  <Button size="sm" variant="outline-success" className="w-100" onClick={() => downloadKml(layer)}>
-                    Download KML
+                  <Button
+                    variant="outline-success"
+                    size="sm"
+                    onClick={() => downloadKml(layer)}
+                    className="w-100"
+                  >
+                    Export KML
                   </Button>
-
                 </Card.Body>
               </Card>
-            ))
-          }
+            ))}
         </div>
       )}
 
+      {/* Peta */}
       <MapContainer
         center={[defaultLocation.lat, defaultLocation.lng]}
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
+        zoom={25}
+        maxZoom={20}
+        scrollWheelZoom={true}
+        style={{ height: '100vh', width: '100%' }}
       >
-        {/* Tile layer OpenStreetMap */}
         <TileLayer
+          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
         />
 
         {/* Marker hasil pencarian */}
         {foundMarker && (
           <Marker position={foundMarker}>
-            <Popup>Lokasi hasil pencarian</Popup>
+            <Popup>
+              totol pencarian
+            </Popup>
           </Marker>
         )}
 
-        {/* Render semua layer yang visible */}
+        {/* Marker lokasi user */}
+        {userLocation && (
+          <Marker position={userLocation} icon={L.icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41],
+            className: 'user-location-marker'
+          })}>
+            <Popup>
+              gua disini
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Render layers */}
         {layers.map((layer, idx) => (
           layer.visible && (
             <LayerGroup key={idx}>
-              {layer.markers.map((m, i) => (
-                <Marker key={i} position={[m.lat, m.lng]}>
-                  <Popup>{m.label}</Popup>
+              {/* Marker di layer */}
+              {layer.markers.map((marker, mIdx) => (
+                <Marker
+                  key={`marker-${idx}-${mIdx}`}
+                  position={[marker.lat, marker.lng]}
+                >
+                  <Popup>{marker.label}</Popup>
                 </Marker>
               ))}
-              {layer.polylines.map((p, i) => (
+
+              {/* Polyline di layer */}
+              {layer.polylines.map((polyline, pIdx) => (
                 <Polyline
-                  key={i}
-                  positions={p.positions}
-                  pathOptions={{ color: layer.color, weight: 3 }}
+                  key={`polyline-${idx}-${pIdx}`}
+                  positions={polyline.positions}
+                  pathOptions={{ color: layer.color }}
                 >
+                  <Popup>{polyline.label}</Popup>
                 </Polyline>
               ))}
             </LayerGroup>
           )
         ))}
 
-        {/* Component untuk mencari lokasi */}
+        {/* Komponen pencarian */}
         <SearchLocationHandler query={locationQuery} onFound={setFoundMarker} />
       </MapContainer>
     </div>
