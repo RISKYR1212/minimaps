@@ -1,29 +1,83 @@
-// ... (import dan ikon Leaflet tetap sama)
+import React, { useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import { Card, Form, FormControl, Button } from 'react-bootstrap'
+import * as toGeoJSON from '@tmcw/togeojson'
+import JSZip from 'jszip'
+
+// Fix Leaflet icons
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+})
+
+function SearchLocationHandler({ query, onFound }) {
+  const map = useMap()
+
+  React.useEffect(() => {
+    const fetchLocation = async () => {
+      if (!query) return
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+        const data = await res.json()
+        if (data && data.length > 0) {
+          const loc = data[0]
+          const latlng = [parseFloat(loc.lat), parseFloat(loc.lon)]
+          map.setView(latlng, 18)
+          onFound(latlng)
+        } else {
+          alert('Lokasi tidak ditemukan.')
+        }
+      } catch (err) {
+        alert('Terjadi kesalahan saat mencari lokasi.')
+        console.error(err)
+      }
+    }
+
+    fetchLocation()
+  }, [query, map, onFound])
+
+  return null
+}
 
 function Maps() {
   const defaultLocation = { lat: -6.511809, lng: 106.8128 }
+  const [inputLocation, setInputLocation] = useState('')
   const [locationQuery, setLocationQuery] = useState('')
-  const [layerFilter, setLayerFilter] = useState('')
   const [foundMarker, setFoundMarker] = useState(null)
+  const [sidebarVisible, setSidebarVisible] = useState(true)
+  const [layerFilter, setLayerFilter] = useState('')
   const [layers, setLayers] = useState(() => {
-    // Load from localStorage on initial render
-    const saved = localStorage.getItem('savedLayers')
-    return saved ? JSON.parse(saved) : [
+    // Load dari localStorage kalau ada
+    const saved = localStorage.getItem('layersData')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        return [
+          { name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }
+        ]
+      }
+    }
+    return [
       { name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }
     ]
   })
 
-  // Save to localStorage whenever layers change
-  React.useEffect(() => {
-    localStorage.setItem('savedLayers', JSON.stringify(layers))
+  // Simpan layers ke localStorage tiap ada perubahan
+  useEffect(() => {
+    localStorage.setItem('layersData', JSON.stringify(layers))
   }, [layers])
 
   const escapeXml = str =>
     str?.replace(/&/g, '&amp;')
-       .replace(/</g, '&lt;')
-       .replace(/>/g, '&gt;')
-       .replace(/"/g, '&quot;')
-       .replace(/'/g, '&apos;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
 
   const parseFile = async (file, idx) => {
     try {
@@ -83,7 +137,7 @@ function Maps() {
         visible: true,
         markers: [],
         polylines: [],
-        color: `#${Math.floor(Math.random() * 16777215).toString(16)}`
+        color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`
       }
     ])
   }
@@ -148,109 +202,149 @@ function Maps() {
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+      {/* Tombol toggle sidebar */}
+      <Button
+        size="sm"
+        variant="primary"
+        onClick={() => setSidebarVisible(!sidebarVisible)}
+        style={{
+          position: 'absolute',
+          top: 20,
+          left: 20,
+          zIndex: 1100
+        }}
+      >
+        {sidebarVisible ? 'Sembunyikan Sidebar' : 'Tampilkan Sidebar'}
+      </Button>
+
       {/* Sidebar */}
-      <div style={{
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        width: 320,
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        padding: 12,
-        background: 'rgba(255,255,255,0.95)',
-        borderRadius: 8,
-        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-        zIndex: 1000
-      }}>
-        <h5>🗂️ Layers KML/KMZ</h5>
-        <Button size="sm" onClick={addLayer} className="mb-3 w-100">
-          Tambah Layer
-        </Button>
+      {sidebarVisible && (
+        <div style={{
+          position: 'absolute',
+          top: 60,
+          left: 20,
+          width: 320,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          padding: 12,
+          background: 'rgba(255,255,255,0.95)',
+          borderRadius: 8,
+          boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+          zIndex: 1000
+        }}>
+          <h5>🔍 Cari Lokasi</h5>
+          <Form
+            onSubmit={e => {
+              e.preventDefault()
+              setLocationQuery(inputLocation.trim())
+            }}
+            className="mb-3"
+          >
+            <FormControl
+              type="text"
+              placeholder="Cari lokasi..."
+              value={inputLocation}
+              onChange={e => setInputLocation(e.target.value)}
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              className="mt-2 w-100"
+              disabled={!inputLocation.trim()}
+            >
+              Cari
+            </Button>
+          </Form>
 
-        <FormControl
-          placeholder="🔍 Filter nama layer..."
-          value={layerFilter}
-          onChange={e => setLayerFilter(e.target.value)}
-          className="mb-2"
-        />
-
-        {layers
-          .filter(layer => layer.name.toLowerCase().includes(layerFilter.toLowerCase()))
-          .map((layer, idx) => (
-            <Card key={idx} className="mt-2">
-              <Card.Body>
-                <div className="d-flex align-items-center mb-2">
-                  <Form.Check
-                    type="checkbox"
-                    checked={layer.visible}
-                    onChange={() => toggleVisibility(idx)}
-                    label={layer.name}
-                    className="me-2"
+          <h5>🗂️ Layers KML/KMZ</h5>
+          <Button size="sm" onClick={addLayer} className="mb-3 w-100">
+            Tambah Layer
+          </Button>
+          <FormControl
+            placeholder="🔍 Filter nama layer..."
+            value={layerFilter}
+            onChange={e => setLayerFilter(e.target.value)}
+            className="mb-2"
+          />
+          {layers
+            .filter(layer => layer.name.toLowerCase().includes(layerFilter.toLowerCase()))
+            .map((layer, idx) => (
+              <Card key={idx} className="mt-2">
+                <Card.Body>
+                  <div className="d-flex align-items-center mb-2">
+                    <Form.Check
+                      type="checkbox"
+                      checked={layer.visible}
+                      onChange={() => toggleVisibility(idx)}
+                      label={layer.name}
+                      className="me-2"
+                    />
+                    <FormControl
+                      type="color"
+                      value={layer.color}
+                      onChange={e => updateColor(idx, e.target.value)}
+                      style={{ width: 30, height: 30 }}
+                    />
+                  </div>
+                  <input
+                    type="file"
+                    accept=".kml,.kmz"
+                    className="form-control form-control-sm mb-2"
+                    onChange={e => handleFileChange(e, idx)}
                   />
-                  <FormControl
-                    type="color"
-                    value={layer.color}
-                    onChange={e => updateColor(idx, e.target.value)}
-                    style={{ width: 30, height: 30 }}
-                  />
-                </div>
-                <input
-                  type="file"
-                  accept=".kml,.kmz"
-                  className="form-control form-control-sm mb-2"
-                  onChange={e => handleFileChange(e, idx)}
-                />
-                <Button size="sm" variant="outline-success" className="w-100" onClick={() => downloadKml(layer)}>
-                   Download KML
-                </Button>
-              </Card.Body>
-            </Card>
-          ))}
-      </div>
+                  <Button size="sm" variant="outline-success" className="w-100" onClick={() => downloadKml(layer)}>
+                    Download KML
+                  </Button>
 
-      {/* Map */}
+                </Card.Body>
+              </Card>
+            ))
+          }
+        </div>
+      )}
+
       <MapContainer
         center={[defaultLocation.lat, defaultLocation.lng]}
-        zoom={18}
-        style={{ width: '100%', height: '100%' }}
+        zoom={13}
+        style={{ height: '100%', width: '100%' }}
       >
+        {/* Tile layer OpenStreetMap */}
         <TileLayer
-  url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-  maxZoom={25}
-  subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-/>
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
+        />
 
-
-        {locationQuery && (
-          <SearchLocationHandler query={locationQuery} onFound={setFoundMarker} />
-        )}
-
+        {/* Marker hasil pencarian */}
         {foundMarker && (
           <Marker position={foundMarker}>
-            <Popup> Lokasi ditemukan</Popup>
+            <Popup>Lokasi hasil pencarian</Popup>
           </Marker>
         )}
 
-        {layers
-          .filter(layer => layer.visible && layer.name.toLowerCase().includes(layerFilter.toLowerCase()))
-          .map((layer, idx) => (
+        {/* Render semua layer yang visible */}
+        {layers.map((layer, idx) => (
+          layer.visible && (
             <LayerGroup key={idx}>
-              {layer.markers.map((marker, i) => (
-                <Marker key={i} position={[marker.lat, marker.lng]}>
-                  <Popup><strong>{marker.label}</strong></Popup>
+              {layer.markers.map((m, i) => (
+                <Marker key={i} position={[m.lat, m.lng]}>
+                  <Popup>{m.label}</Popup>
                 </Marker>
               ))}
-              {layer.polylines.map((polyline, i) => (
+              {layer.polylines.map((p, i) => (
                 <Polyline
                   key={i}
-                  positions={polyline.positions}
-                  pathOptions={{ color: layer.color }}
+                  positions={p.positions}
+                  pathOptions={{ color: layer.color, weight: 3 }}
                 >
-                  <Popup><strong>{polyline.label}</strong></Popup>
                 </Polyline>
               ))}
             </LayerGroup>
-          ))}
+          )
+        ))}
+
+        {/* Component untuk mencari lokasi */}
+        <SearchLocationHandler query={locationQuery} onFound={setFoundMarker} />
       </MapContainer>
     </div>
   )
