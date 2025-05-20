@@ -14,6 +14,35 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
 })
 
+// Helper functions for URL serialization
+const encodeLayers = (layers) => {
+  const simplified = layers.map(layer => ({
+    n: layer.name,
+    v: layer.visible,
+    c: layer.color,
+    m: layer.markers,
+    p: layer.polylines
+  }))
+  return btoa(JSON.stringify(simplified))
+}
+
+const decodeLayers = (encoded) => {
+  try {
+    const decoded = JSON.parse(atob(encoded))
+    return decoded.map(layer => ({
+      name: layer.n || `Layer`,
+      visible: layer.v !== undefined ? layer.v : true,
+      color: layer.c || '#ff0000',
+      markers: layer.m || [],
+      polylines: layer.p || []
+    }))
+  } catch {
+    return [
+      { name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }
+    ]
+  }
+}
+
 function SearchLocationHandler({ query, onFound }) {
   const map = useMap()
 
@@ -53,8 +82,16 @@ function Maps() {
   const [userLocation, setUserLocation] = useState(null)
   const [geoError, setGeoError] = useState(null)
 
+  // Initialize layers from URL or localStorage
   const [layers, setLayers] = useState(() => {
-    // Load dari localStorage kalau ada
+    // Try to get from URL first
+    const params = new URLSearchParams(window.location.search)
+    const urlLayers = params.get('layers')
+    if (urlLayers) {
+      return decodeLayers(urlLayers)
+    }
+    
+    // Fallback to localStorage
     const saved = localStorage.getItem('layersData')
     if (saved) {
       try {
@@ -70,9 +107,15 @@ function Maps() {
     ]
   })
 
-  // Simpan layers ke localStorage tiap ada perubahan
+  // Update URL and localStorage when layers change
   useEffect(() => {
+    // Save to localStorage
     localStorage.setItem('layersData', JSON.stringify(layers))
+    
+    // Update URL without reloading
+    const params = new URLSearchParams(window.location.search)
+    params.set('layers', encodeLayers(layers))
+    window.history.replaceState(null, '', `?${params.toString()}`)
   }, [layers])
 
   const escapeXml = str =>
@@ -145,7 +188,6 @@ function Maps() {
     ])
   }
 
-  // Fungsi untuk menghapus layer
   const removeLayer = (idx) => {
     if (layers.length <= 1) {
       alert('Anda harus memiliki setidaknya satu layer')
@@ -215,7 +257,6 @@ function Maps() {
     URL.revokeObjectURL(url)
   }
 
-  // Fungsi mendapatkan lokasi user
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setGeoError('Geolokasi tidak didukung oleh browser Anda.')
