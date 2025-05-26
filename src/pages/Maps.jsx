@@ -114,7 +114,7 @@ function Maps() {
     const params = new URLSearchParams(window.location.search);
     const urlLayers = params.get('layers');
     if (urlLayers) return decodeLayers(urlLayers);
-    
+
     const saved = localStorage.getItem('layersData');
     if (saved) {
       try {
@@ -202,7 +202,7 @@ function Maps() {
       alert('Anda harus memiliki setidaknya satu layer');
       return;
     }
-    
+
     if (window.confirm(`Apakah Anda yakin ingin menghapus layer "${layers[idx].name}"?`)) {
       setLayers(prev => prev.filter((_, i) => i !== idx));
     }
@@ -225,7 +225,7 @@ function Maps() {
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>${escapeXml(layer.name)}</name>`;
-    
+
     const kmlFooter = `
   </Document>
 </kml>`;
@@ -281,7 +281,7 @@ function Maps() {
       setGeoError('Geolokasi tidak didukung oleh browser Anda.');
       return;
     }
-    
+
     setGeoError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -393,16 +393,16 @@ function Maps() {
               <Card key={idx} className="mb-2">
                 <Card.Body>
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <Form.Check 
-                      type="checkbox" 
+                    <Form.Check
+                      type="checkbox"
                       id={`visible-layer-${idx}`}
                       label={`Tampilkan ${layer.name}`}
                       checked={layer.visible}
                       onChange={() => toggleVisibility(idx)}
                     />
-                    <Button 
-                      variant="outline-danger" 
-                      size="sm" 
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
                       onClick={() => removeLayer(idx)}
                       disabled={layers.length <= 1}
                     >
@@ -460,10 +460,11 @@ function Maps() {
         style={{ height: '100vh', width: '100%' }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; OpenStreetMap'
+          url="http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          maxZoom={25}
+          subdomains={["mt0", "mt1", "mt2", "mt3"]}
         />
-
         <FlyToLocation location={userLocation} />
 
         {/* Marker hasil pencarian */}
@@ -475,8 +476,8 @@ function Maps() {
 
         {/* Marker lokasi user */}
         {userLocation && (
-          <Marker 
-            position={userLocation} 
+          <Marker
+            position={userLocation}
             icon={L.icon({
               iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
               iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
