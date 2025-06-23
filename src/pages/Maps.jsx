@@ -85,7 +85,7 @@ function Maps() {
     if (urlLayers) return decodeLayers(urlLayers);
     const saved = localStorage.getItem('layersData');
     if (saved) {
-      try { return JSON.parse(saved); } 
+      try { return JSON.parse(saved); }
       catch { return [{ name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }]; }
     }
     return [{ name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }];
@@ -308,7 +308,7 @@ function Maps() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => setLayers(prev => [...prev, { name: `Layer ${prev.length + 1}`, visible: true, markers: [], polylines: [], color: '#'+Math.floor(Math.random()*16777215).toString(16) }])}
+          onClick={() => setLayers(prev => [...prev, { name: `Layer ${prev.length + 1}`, visible: true, markers: [], polylines: [], color: '#' + Math.floor(Math.random() * 16777215).toString(16) }])}
           className="w-100"
         >
           Tambah Layer
