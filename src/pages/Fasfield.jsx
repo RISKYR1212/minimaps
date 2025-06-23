@@ -1,190 +1,387 @@
-// Fastfield – versi final lengkap (foto per‑kondisi)
-import React, { useState } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { Container, Row, Col, Card, Button, Form } from 'react-bootstrap';
-import { Trash, FileEarmarkText, FilePdf, FileExcel } from 'react-bootstrap-icons';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
-import logo from '../assets/logo-jlm.jpeg';
+// Fastfield – COMPLETE copy-paste version (photo support for Type Cable & Qty Cable)
+import React, { useState } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Button,
+  Form,
+} from "react-bootstrap";
+import {
+  Trash,
+  FileEarmarkText,
+  FilePdf,
+  FileExcel,
+} from "react-bootstrap-icons";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import * as XLSX from "xlsx";
+import logo from "../assets/logo-jlm.jpeg";
 
-/* --------------------------------- DATA --------------------------------- */
+/* ------------------------------------------------------------------
+ * MASTER DATA
+ * ----------------------------------------------------------------*/
 const cableOptions = [12, 24, 48, 96, 144, 288];
 
 const aerialFields = [
-  { key: 'qtyCable', label: 'Qty Cable' },
-  { key: 'spanPole', label: 'Span Pole' },
-  { key: 'poleId', label: 'Pole ID' },
-  { key: 'poleSize', label: 'Pole Size' },
-  { key: 'poleCondition', label: 'Pole Condition', photo: true },
-  { key: 'suspensionCondition', label: 'Suspension Condition', photo: true },
-  { key: 'deadEndCondition', label: 'Dead End Condition', photo: true },
-  { key: 'slackSupportCondition', label: 'Slack Support Condition', photo: true },
-  { key: 'cableCondition', label: 'Cable Condition', photo: true },
-  { key: 'odpId', label: 'ODP ID' },
-  { key: 'odpCover', label: 'ODP Cover' },
-  { key: 'odpInside', label: 'ODP Inside' },
-  { key: 'closureCondition', label: 'Closure Condition', photo: true },
-  { key: 'closureStatus', label: 'Closure Status', photo: true }
+  { key: "qtyCable", label: "Qty Cable", photo: true },
+  { key: "spanPole", label: "Span Pole" },
+  { key: "poleId", label: "Pole ID" },
+  { key: "poleSize", label: "Pole Size" },
+  { key: "poleCondition", label: "Pole Condition", photo: true },
+  { key: "suspensionCondition", label: "Suspension Condition", photo: true },
+  { key: "deadEndCondition", label: "Dead End Condition", photo: true },
+  { key: "slackSupportCondition", label: "Slack Support Condition", photo: true },
+  { key: "cableCondition", label: "Cable Condition", photo: true },
+  { key: "odpId", label: "ODP ID" },
+  { key: "odpCover", label: "ODP Cover" },
+  { key: "odpInside", label: "ODP Inside" },
+  { key: "closureCondition", label: "Closure Condition", photo: true },
+  { key: "closureStatus", label: "Closure Status", photo: true },
 ];
 
-const buildInitialAerial = (id = 1) => {
-  const base = { id, typeCable: '', gpsLat: '', gpsLong: '', photos: [] };
-  aerialFields.forEach(f => {
-    base[f.key] = '';
-    if (f.photo) base[`${f.key}Photos`] = [];
+const buildAerial = (id = 1) => {
+  const aerial = {
+    id,
+    typeCable: "",
+    typeCablePhotos: [],
+    gpsLat: "",
+    gpsLong: "",
+    photos: [],
+  };
+  aerialFields.forEach((f) => {
+    aerial[f.key] = "";
+    if (f.photo) aerial[`${f.key}Photos`] = [];
   });
-  return base;
+  return aerial;
 };
 
-/* ------------------------------- COMPONENT ------------------------------ */
 const Fastfield = () => {
   const [report, setReport] = useState({
-    projectName: '',
-    ringId: '',
-    segment: '',
-    date: '',
-    inspector: '',
-    aerials: [buildInitialAerial()]
+    projectName: "",
+    ringId: "",
+    segment: "",
+    date: "",
+    inspector: "",
+    aerials: [buildAerial()],
   });
 
-  /* ------------------------------ HANDLERS ------------------------------ */
-  const handleChange = (field, value) => setReport(prev => ({ ...prev, [field]: value }));
+  /* ----------------------- HELPERS ----------------------- */
+  const handleChange = (field, value) =>
+    setReport((prev) => ({ ...prev, [field]: value }));
 
-  const handleAerialChange = (idx, field, value) => {
-    setReport(prev => {
+  const handleAerialChange = (idx, field, value) =>
+    setReport((prev) => {
       const aerials = [...prev.aerials];
       aerials[idx][field] = value;
       return { ...prev, aerials };
     });
-  };
 
-  const fileArrayFromInput = files => Array.from(files).map(file => new Promise(res => {
-    const reader = new FileReader();
-    reader.onloadend = () => res({ file, preview: reader.result });
-    reader.readAsDataURL(file);
-  }));
+  const filesToPreviews = (files) =>
+    Array.from(files).map(
+      (file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve({ file, preview: reader.result });
+          reader.readAsDataURL(file);
+        })
+    );
 
-  const handleFieldPhotoUpload = (idx, photoField, files) => {
-    Promise.all(fileArrayFromInput(files)).then(results => {
-      setReport(prev => {
+  const uploadPhotos = (idx, field, files) => {
+    Promise.all(filesToPreviews(files)).then((list) =>
+      setReport((prev) => {
         const aerials = [...prev.aerials];
-        aerials[idx][photoField] = results;
+        aerials[idx][field] = [...aerials[idx][field], ...list];
         return { ...prev, aerials };
-      });
+      })
+    );
+  };
+
+  const uploadGeneral = (idx, files) => {
+    Promise.all(filesToPreviews(files)).then((list) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) =>
+          setReport((prev) => {
+            const aerials = [...prev.aerials];
+            aerials[idx].photos = [...aerials[idx].photos, ...list];
+            aerials[idx].gpsLat = pos.coords.latitude.toFixed(6);
+            aerials[idx].gpsLong = pos.coords.longitude.toFixed(6);
+            return { ...prev, aerials };
+          }),
+        (err) => {
+          console.error("GPS Error:", err);
+          setReport((prev) => {
+            const aerials = [...prev.aerials];
+            aerials[idx].photos = [...aerials[idx].photos, ...list];
+            return { ...prev, aerials };
+          });
+        }
+      );
     });
   };
 
-  const handleGeneralPhotoUpload = (idx, files) => {
-    Promise.all(fileArrayFromInput(files)).then(results => {
-      navigator.geolocation.getCurrentPosition(pos => {
-        setReport(prev => {
-          const aerials = [...prev.aerials];
-          aerials[idx].photos = results;
-          aerials[idx].gpsLat = pos.coords.latitude;
-          aerials[idx].gpsLong = pos.coords.longitude;
-          return { ...prev, aerials };
-        });
-      }, () => alert('Gagal mengambil GPS'));
-    });
-  };
-
-  /* ------------------------------ EXPORT ------------------------------ */
-  const handleExportPDF = async () => {
-    const el = document.getElementById('report-preview');
-    const canvas = await html2canvas(el, { scale: 2 });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a3');
-
-    const logoImg = new Image();
-    logoImg.src = logo;
-    await new Promise(r => (logoImg.onload = r));
-    pdf.addImage(logoImg, 'JPEG', 10, 5, 30, 15);
-    pdf.addImage(imgData, 'PNG', 0, 25, pdf.internal.pageSize.getWidth());
-    pdf.save('laporan.pdf');
-  };
-
-  const handleExportExcel = () => {
-    const rows = report.aerials.map((a, i) => ({
-      Section: `Aerial #${i + 1}`,
-      TypeCable: a.typeCable,
-      GPS: `Lat ${a.gpsLat}, Long ${a.gpsLong}`,
-      ...aerialFields.reduce((acc, f) => ({ ...acc, [f.label.replace(/ /g, '')]: a[f.key] }), {})
+  const addAerial = () => 
+    setReport(prev => ({
+      ...prev,
+      aerials: [...prev.aerials, buildAerial(prev.aerials.length + 1)]
     }));
 
-    const ws = XLSX.utils.json_to_sheet([
-      { ProjectName: report.projectName, RingID: report.ringId, Segment: report.segment, Date: report.date, Inspector: report.inspector },
-      {},
-      ...rows
-    ]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
-    XLSX.writeFile(wb, 'laporan.xlsx');
+  const removeAerial = (idx) => {
+    if (report.aerials.length <= 1) return;
+    setReport(prev => ({
+      ...prev,
+      aerials: prev.aerials.filter((_, i) => i !== idx)
+    }));
   };
 
-  const handleReset = () => setReport({ projectName: '', ringId: '', segment: '', date: '', inspector: '', aerials: [buildInitialAerial()] });
+  /* ----------------------- EXPORTERS ----------------------- */
+  const exportPDF = async () => {
+    const el = document.getElementById("report-preview");
+    if (!el) return;
+    const canvas = await html2canvas(el, { scale: 2 });
+    const pdf = new jsPDF("p", "mm", "a3");
+    const lg = new Image();
+    lg.src = logo;
+    await new Promise((res) => (lg.onload = res));
+    pdf.addImage(lg, "JPEG", 10, 5, 30, 15);
+    pdf.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      0,
+      25,
+      pdf.internal.pageSize.getWidth(),
+      pdf.internal.pageSize.getHeight() - 25
+    );
+    pdf.save("laporan.pdf");
+  };
 
-  /* -------------------------------- RENDER ------------------------------ */
+  const exportExcel = () => {
+    const rows = report.aerials.flatMap((a, i) => [
+      {
+        Section: `Aerial #${i + 1}`,
+        TypeCable: a.typeCable,
+        QtyCable: a.qtyCable,
+        GPS: a.gpsLat ? `Lat ${a.gpsLat}, Long ${a.gpsLong}` : "No GPS",
+        ...aerialFields.reduce(
+          (acc, f) => ({ 
+            ...acc, 
+            [f.label.replace(/ /g, "")]: a[f.key],
+            [`${f.label.replace(/ /g, "")}Photos`]: f.photo ? a[`${f.key}Photos`]?.length || 0 : ""
+          }),
+          {}
+        ),
+        GeneralPhotos: a.photos.length,
+        TypeCablePhotos: a.typeCablePhotos.length
+      }
+    ]);
+
+    const ws = XLSX.utils.json_to_sheet([
+      {
+        ProjectName: report.projectName,
+        RingID: report.ringId,
+        Segment: report.segment,
+        Date: report.date,
+        Inspector: report.inspector,
+      },
+      {},
+      ...rows,
+    ]);
+    
+    // Auto-size columns
+    const wscols = [
+      { wch: 15 }, // Section
+      { wch: 10 }, // TypeCable
+      { wch: 10 }, // QtyCable
+      { wch: 30 }, // GPS
+      ...aerialFields.map(() => ({ wch: 20 })), // Other fields
+      { wch: 15 }, // Photos columns
+    ];
+    ws['!cols'] = wscols;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+    XLSX.writeFile(wb, "laporan.xlsx");
+  };
+
+  const reset = () =>
+    setReport({
+      projectName: "",
+      ringId: "",
+      segment: "",
+      date: "",
+      inspector: "",
+      aerials: [buildAerial()],
+    });
+
+  /* ----------------------- RENDER ----------------------- */
   return (
     <Container fluid className="py-4">
-      {/* HEADER */}
+      {/* Header */}
       <Row className="mb-4">
         <Col>
           <div className="d-flex justify-content-between align-items-center">
-            <h1 className="mb-0"><FileEarmarkText className="me-2" /> Laporan Inspeksi</h1>
+            <h1 className="mb-0">
+              <FileEarmarkText className="me-2" /> Laporan Inspeksi
+            </h1>
             <div>
-              <Button variant="danger" className="me-2" onClick={handleReset}><Trash /> Reset</Button>
-              <Button variant="success" className="me-2" onClick={handleExportPDF}><FilePdf /> PDF</Button>
-              <Button variant="primary" onClick={handleExportExcel}><FileExcel /> Excel</Button>
+              <Button variant="danger" className="me-2" onClick={reset}>
+                <Trash /> Reset
+              </Button>
+              <Button variant="success" className="me-2" onClick={exportPDF}>
+                <FilePdf /> PDF
+              </Button>
+              <Button variant="primary" onClick={exportExcel}>
+                <FileExcel /> Excel
+              </Button>
             </div>
           </div>
         </Col>
       </Row>
 
       <Row>
-        {/* ------------- FORM SIDE ------------- */}
+        {/* -------- FORM SIDE -------- */}
         <Col md={6}>
           {/* Informasi Umum */}
           <Card className="mb-4">
             <Card.Header>Informasi Umum</Card.Header>
             <Card.Body>
-              {['projectName', 'ringId', 'segment', 'date', 'inspector'].map(f => (
-                <Form.Group className="mb-3" key={f}>
-                  <Form.Label>{f.toUpperCase()}</Form.Label>
-                  <Form.Control type={f === 'date' ? 'date' : 'text'} placeholder={`Masukkan ${f}`} value={report[f]} onChange={e => handleChange(f, e.target.value)} />
-                </Form.Group>
-              ))}
+              {["projectName", "ringId", "segment", "date", "inspector"].map(
+                (field) => (
+                  <Form.Group className="mb-3" key={field}>
+                    <Form.Label>{field.replace(/([A-Z])/g, ' $1').toUpperCase()}</Form.Label>
+                    <Form.Control
+                      type={field === "date" ? "date" : "text"}
+                      value={report[field]}
+                      placeholder={`Masukkan ${field.replace(/([A-Z])/g, ' $1')}`}
+                      onChange={(e) => handleChange(field, e.target.value)}
+                    />
+                  </Form.Group>
+                )
+              )}
             </Card.Body>
           </Card>
 
           {/* Aerial Inspections */}
           {report.aerials.map((a, idx) => (
             <Card key={a.id} className="mb-4">
-              <Card.Header>Aerial Inspection #{idx + 1}</Card.Header>
+              <Card.Header className="d-flex justify-content-between align-items-center">
+                <span>Aerial Inspection #{idx + 1}</span>
+                <div>
+                  <Button 
+                    variant="outline-danger" 
+                    size="sm" 
+                    onClick={() => removeAerial(idx)}
+                    disabled={report.aerials.length <= 1}
+                  >
+                    <Trash size={14} />
+                  </Button>
+                </div>
+              </Card.Header>
               <Card.Body>
                 {/* Type Cable */}
                 <Form.Group className="mb-3">
                   <Form.Label>Type Cable</Form.Label>
-                  <Form.Select value={a.typeCable} onChange={e => handleAerialChange(idx, 'typeCable', e.target.value)}>
+                  <Form.Select
+                    value={a.typeCable}
+                    onChange={(e) =>
+                      handleAerialChange(idx, "typeCable", e.target.value)
+                    }
+                  >
                     <option value="">Pilih</option>
-                    {cableOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                    {cableOptions.map((c) => (
+                      <option key={c} value={c}>{c} Core</option>
+                    ))}
                   </Form.Select>
                 </Form.Group>
+                {/* Foto Type Cable */}
+                <Form.Group className="mb-3">
+                  <Form.Label>Foto Type Cable</Form.Label>
+                  <Form.Control
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    capture="camera"
+                    onChange={(e) =>
+                      uploadPhotos(idx, "typeCablePhotos", e.target.files)
+                    }
+                  />
+                  <div className="d-flex flex-wrap gap-2 mt-2">
+                    {a.typeCablePhotos.map((p, i) => (
+                      <div key={i} className="position-relative">
+                        <img
+                          src={p.preview}
+                          alt="tc"
+                          style={{ width: "100px", borderRadius: "6px" }}
+                        />
+                        <Button 
+                          variant="danger" 
+                          size="sm" 
+                          className="position-absolute top-0 end-0"
+                          onClick={() => {
+                            setReport(prev => {
+                              const aerials = [...prev.aerials];
+                              aerials[idx].typeCablePhotos = aerials[idx].typeCablePhotos.filter((_, j) => j !== i);
+                              return { ...prev, aerials };
+                            });
+                          }}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Form.Group>
 
-                {/* Dynamic Fields */}
+                {/* Dynamic fields */}
                 {aerialFields.map(({ key, label, photo }) => (
                   <div key={key} className="mb-3">
                     <Form.Group className="mb-2">
                       <Form.Label>{label}</Form.Label>
-                      <Form.Control placeholder={`Masukkan ${label}`} value={a[key]} onChange={e => handleAerialChange(idx, key, e.target.value)} />
+                      <Form.Control
+                        value={a[key]}
+                        placeholder={`Masukkan ${label}`}
+                        onChange={(e) =>
+                          handleAerialChange(idx, key, e.target.value)
+                        }
+                      />
                     </Form.Group>
                     {photo && (
                       <Form.Group>
                         <Form.Label>Foto {label}</Form.Label>
-                        <Form.Control type="file" multiple accept="image/*" capture="camera" onChange={e => handleFieldPhotoUpload(idx, `${key}Photos`, e.target.files)} />
+                        <Form.Control
+                          type="file"
+                          multiple
+                          capture="camera"
+                          accept="image/*"
+                          onChange={(e) =>
+                            uploadPhotos(idx, `${key}Photos`, e.target.files)
+                          }
+                        />
                         <div className="d-flex flex-wrap gap-2 mt-2">
-                          {(a[`${key}Photos`] || []).map((p, i) => (
-                            <img key={i} src={p.preview} alt={`${key}${i}`} style={{ width: '100px', borderRadius: '6px' }} />
+                          {a[`${key}Photos`].map((p, i) => (
+                            <div key={i} className="position-relative">
+                              <img
+                                src={p.preview}
+                                alt="f"
+                                style={{ width: "100px", borderRadius: "6px" }}
+                              />
+                              <Button 
+                                variant="danger" 
+                                size="sm" 
+                                className="position-absolute top-0 end-0"
+                                onClick={() => {
+                                  setReport(prev => {
+                                    const aerials = [...prev.aerials];
+                                    aerials[idx][`${key}Photos`] = aerials[idx][`${key}Photos`].filter((_, j) => j !== i);
+                                    return { ...prev, aerials };
+                                  });
+                                }}
+                              >
+                                ×
+                              </Button>
+                            </div>
                           ))}
                         </div>
                       </Form.Group>
@@ -195,49 +392,124 @@ const Fastfield = () => {
                 {/* General Photos */}
                 <Form.Group className="mb-3">
                   <Form.Label>Foto Umum / Wide</Form.Label>
-                  <Form.Control type="file" multiple accept="image/*" capture="camera" onChange={e => handleGeneralPhotoUpload(idx, e.target.files)} />
+                  <Form.Control
+                    type="file"
+                    multiple
+                    capture="camera"
+                    accept="image/*"
+                    onChange={(e) => uploadGeneral(idx, e.target.files)}
+                  />
                   <div className="d-flex flex-wrap gap-2 mt-2">
-                    {(a.photos || []).map((p, i) => (
-                      <img key={i} src={p.preview} alt={`gen${i}`} style={{ width: '100px', borderRadius: '6px' }} />
+                    {a.photos.map((p, i) => (
+                      <div key={i} className="position-relative">
+                        <img
+                          src={p.preview}
+                          alt="g"
+                          style={{ width: "100px", borderRadius: "6px" }}
+                        />
+                        <Button 
+                          variant="danger" 
+                          size="sm" 
+                          className="position-absolute top-0 end-0"
+                          onClick={() => {
+                            setReport(prev => {
+                              const aerials = [...prev.aerials];
+                              aerials[idx].photos = aerials[idx].photos.filter((_, j) => j !== i);
+                              return { ...prev, aerials };
+                            });
+                          }}
+                        >
+                          ×
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 </Form.Group>
               </Card.Body>
             </Card>
           ))}
+
+          <Button variant="primary" onClick={addAerial} className="mb-4">
+            Tambah Aerial Inspection
+          </Button>
         </Col>
 
-        {/* ------------- PREVIEW SIDE ------------- */}
+        {/* -------- PREVIEW SIDE -------- */}
         <Col md={6}>
           <Card>
             <Card.Header>Preview Laporan</Card.Header>
-            <Card.Body id="report-preview">
-              <img src={logo} alt="Logo" style={{ width: '110px', marginBottom: '10px' }} />
+            <Card.Body id="report-preview" style={{ backgroundColor: '#f8f9fa' }}>
+              <img
+                src={logo}
+                alt="Logo"
+                style={{ width: "110px", marginBottom: "10px" }}
+              />
               <h5>Informasi Umum</h5>
-              {['projectName', 'ringId', 'segment', 'date', 'inspector'].map(k => (
-                <p key={k}><strong>{k.toUpperCase()}:</strong> {report[k]}</p>
-              ))}
+              {["projectName", "ringId", "segment", "date", "inspector"].map(
+                (k) => (
+                  <p key={k}>
+                    <strong>{k.replace(/([A-Z])/g, ' $1').toUpperCase()}:</strong> {report[k] || "-"}
+                  </p>
+                )
+              )}
 
               {report.aerials.map((a, i) => (
-                <div key={i} className="mt-4">
+                <div key={i} className="mt-4 p-3 bg-white rounded">
                   <h6>Aerial #{i + 1}</h6>
-                  <p><strong>Type Cable:</strong> {a.typeCable}</p>
-                  <p><strong>GPS:</strong> {a.gpsLat && `${a.gpsLat}, ${a.gpsLong}`}</p>
+                  <p><strong>Type Cable:</strong> {a.typeCable || "-"}</p>
+                  <p><strong>GPS:</strong> {a.gpsLat ? `${a.gpsLat}, ${a.gpsLong}` : "No GPS data"}</p>
+                  
                   {aerialFields.map(({ key, label }) => (
-                    <p key={key}><strong>{label}:</strong> {a[key]}</p>
+                    <p key={key}><strong>{label}:</strong> {a[key] || "-"}</p>
                   ))}
-                  <div className="d-flex flex-wrap gap-2 mt-2">
-                    {/* Foto per kondisi */}
-                    {aerialFields.filter(f => f.photo).flatMap(({ key }) => (
-                      (a[`${key}Photos`] || []).map((p, idx) => (
-                        <img key={`${key}${idx}`} src={p.preview} alt={`${key}${idx}`} style={{ width: '80px', borderRadius: '6px' }} />
-                      ))
-                    ))}
-                    {/* Foto umum */}
-                    {(a.photos || []).map((p, idx) => (
-                      <img key={`gen${idx}`} src={p.preview} alt={`gen${idx}`} style={{ width: '80px', borderRadius: '6px' }} />
-                    ))}
+
+                  <div className="mt-3">
+                    <strong>Type Cable Photos:</strong>
+                    <div className="d-flex flex-wrap gap-2 mt-2">
+                      {a.typeCablePhotos.map((p, idx) => (
+                        <img
+                          key={`tc${idx}`}
+                          src={p.preview}
+                          alt={`tc${idx}`}
+                          style={{ width: "80px", borderRadius: "6px" }}
+                        />
+                      ))}
+                    </div>
                   </div>
+
+                  {aerialFields.filter(f => f.photo).map(({ key, label }) => (
+                    a[`${key}Photos`]?.length > 0 && (
+                      <div key={`photos-${key}`} className="mt-3">
+                        <strong>{label} Photos:</strong>
+                        <div className="d-flex flex-wrap gap-2 mt-2">
+                          {a[`${key}Photos`].map((p, idx) => (
+                            <img
+                              key={`${key}${idx}`}
+                              src={p.preview}
+                              alt={`${key}${idx}`}
+                              style={{ width: "80px", borderRadius: "6px" }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ))}
+
+                  {a.photos.length > 0 && (
+                    <div className="mt-3">
+                      <strong>General Photos:</strong>
+                      <div className="d-flex flex-wrap gap-2 mt-2">
+                        {a.photos.map((p, idx) => (
+                          <img
+                            key={`gen${idx}`}
+                            src={p.preview}
+                            alt={`gen${idx}`}
+                            style={{ width: "80px", borderRadius: "6px" }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </Card.Body>
