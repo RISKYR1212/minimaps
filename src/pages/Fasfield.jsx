@@ -1,4 +1,3 @@
-// Fastfield – COMPLETE copy-paste version (photo support for Type Cable & Qty Cable)
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import {
@@ -20,9 +19,7 @@ import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 import logo from "../assets/logo-jlm.jpeg";
 
-/* ------------------------------------------------------------------
- * MASTER DATA
- * ----------------------------------------------------------------*/
+
 const cableOptions = [12, 24, 48, 96, 144, 288];
 
 const aerialFields = [
@@ -68,7 +65,7 @@ const Fastfield = () => {
     aerials: [buildAerial()],
   });
 
-  /* ----------------------- HELPERS ----------------------- */
+
   const handleChange = (field, value) =>
     setReport((prev) => ({ ...prev, [field]: value }));
 
@@ -122,7 +119,7 @@ const Fastfield = () => {
     });
   };
 
-  const addAerial = () => 
+  const addAerial = () =>
     setReport(prev => ({
       ...prev,
       aerials: [...prev.aerials, buildAerial(prev.aerials.length + 1)]
@@ -136,7 +133,7 @@ const Fastfield = () => {
     }));
   };
 
-  /* ----------------------- EXPORTERS ----------------------- */
+
   const exportPDF = async () => {
     const el = document.getElementById("report-preview");
     if (!el) return;
@@ -165,8 +162,8 @@ const Fastfield = () => {
         QtyCable: a.qtyCable,
         GPS: a.gpsLat ? `Lat ${a.gpsLat}, Long ${a.gpsLong}` : "No GPS",
         ...aerialFields.reduce(
-          (acc, f) => ({ 
-            ...acc, 
+          (acc, f) => ({
+            ...acc,
             [f.label.replace(/ /g, "")]: a[f.key],
             [`${f.label.replace(/ /g, "")}Photos`]: f.photo ? a[`${f.key}Photos`]?.length || 0 : ""
           }),
@@ -188,7 +185,7 @@ const Fastfield = () => {
       {},
       ...rows,
     ]);
-    
+
     // Auto-size columns
     const wscols = [
       { wch: 15 }, // Section
@@ -215,7 +212,7 @@ const Fastfield = () => {
       aerials: [buildAerial()],
     });
 
-  /* ----------------------- RENDER ----------------------- */
+
   return (
     <Container fluid className="py-4">
       {/* Header */}
@@ -241,7 +238,7 @@ const Fastfield = () => {
       </Row>
 
       <Row>
-        {/* -------- FORM SIDE -------- */}
+
         <Col md={6}>
           {/* Informasi Umum */}
           <Card className="mb-4">
@@ -263,15 +260,15 @@ const Fastfield = () => {
             </Card.Body>
           </Card>
 
-          {/* Aerial Inspections */}
+
           {report.aerials.map((a, idx) => (
             <Card key={a.id} className="mb-4">
               <Card.Header className="d-flex justify-content-between align-items-center">
                 <span>Aerial Inspection #{idx + 1}</span>
                 <div>
-                  <Button 
-                    variant="outline-danger" 
-                    size="sm" 
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
                     onClick={() => removeAerial(idx)}
                     disabled={report.aerials.length <= 1}
                   >
@@ -280,7 +277,7 @@ const Fastfield = () => {
                 </div>
               </Card.Header>
               <Card.Body>
-                {/* Type Cable */}
+
                 <Form.Group className="mb-3">
                   <Form.Label>Type Cable</Form.Label>
                   <Form.Select
@@ -295,7 +292,7 @@ const Fastfield = () => {
                     ))}
                   </Form.Select>
                 </Form.Group>
-                {/* Foto Type Cable */}
+
                 <Form.Group className="mb-3">
                   <Form.Label>Foto Type Cable</Form.Label>
                   <Form.Control
@@ -315,9 +312,9 @@ const Fastfield = () => {
                           alt="tc"
                           style={{ width: "100px", borderRadius: "6px" }}
                         />
-                        <Button 
-                          variant="danger" 
-                          size="sm" 
+                        <Button
+                          variant="danger"
+                          size="sm"
                           className="position-absolute top-0 end-0"
                           onClick={() => {
                             setReport(prev => {
@@ -334,7 +331,7 @@ const Fastfield = () => {
                   </div>
                 </Form.Group>
 
-                {/* Dynamic fields */}
+
                 {aerialFields.map(({ key, label, photo }) => (
                   <div key={key} className="mb-3">
                     <Form.Group className="mb-2">
@@ -367,9 +364,9 @@ const Fastfield = () => {
                                 alt="f"
                                 style={{ width: "100px", borderRadius: "6px" }}
                               />
-                              <Button 
-                                variant="danger" 
-                                size="sm" 
+                              <Button
+                                variant="danger"
+                                size="sm"
                                 className="position-absolute top-0 end-0"
                                 onClick={() => {
                                   setReport(prev => {
@@ -389,7 +386,7 @@ const Fastfield = () => {
                   </div>
                 ))}
 
-                {/* General Photos */}
+
                 <Form.Group className="mb-3">
                   <Form.Label>Foto Umum / Wide</Form.Label>
                   <Form.Control
@@ -407,9 +404,9 @@ const Fastfield = () => {
                           alt="g"
                           style={{ width: "100px", borderRadius: "6px" }}
                         />
-                        <Button 
-                          variant="danger" 
-                          size="sm" 
+                        <Button
+                          variant="danger"
+                          size="sm"
                           className="position-absolute top-0 end-0"
                           onClick={() => {
                             setReport(prev => {
@@ -434,7 +431,7 @@ const Fastfield = () => {
           </Button>
         </Col>
 
-        {/* -------- PREVIEW SIDE -------- */}
+
         <Col md={6}>
           <Card>
             <Card.Header>Preview Laporan</Card.Header>
@@ -458,7 +455,7 @@ const Fastfield = () => {
                   <h6>Aerial #{i + 1}</h6>
                   <p><strong>Type Cable:</strong> {a.typeCable || "-"}</p>
                   <p><strong>GPS:</strong> {a.gpsLat ? `${a.gpsLat}, ${a.gpsLong}` : "No GPS data"}</p>
-                  
+
                   {aerialFields.map(({ key, label }) => (
                     <p key={key}><strong>{label}:</strong> {a[key] || "-"}</p>
                   ))}

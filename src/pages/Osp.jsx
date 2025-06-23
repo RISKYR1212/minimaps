@@ -79,15 +79,15 @@ const Osp = () => {
     }
   };
 
-  const url = "https://script.google.com/macros/s/AKfycbxyv9FfTmoR1rJjKJhIWNfxqghdFdHHKmSJAszE2-Y/dev"; 
+  const url = "https://script.google.com/macros/s/AKfycbxyv9FfTmoR1rJjKJhIWNfxqghdFdHHKmSJAszE2-Y/dev";
 
-const sendToGoogleSheet = async (data) => {
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-};
+  const sendToGoogleSheet = async (data) => {
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  };
 
 
   const exportPDF = () => {
