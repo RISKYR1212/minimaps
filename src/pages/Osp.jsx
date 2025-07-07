@@ -1,147 +1,79 @@
-// React 18 + Vite + React‑Bootstrap 5
-import React, { useState } from "react";
-import {
-  Container, Row, Col, Form, Button, ButtonGroup, Table,
-} from "react-bootstrap";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import * as XLSX from "xlsx";
+// src/pages/Osp.jsx
+import React, { useState, useEffect } from "react";
+import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
 
+/* ---------- state awal ---------- */
 const initialForm = {
-  // metadata
-  tanggal: "",
-  hari: "",
-  bulanTahun: "",
-
-  // ---------- ACTION USER TEAM ----------
-  userStart: "",
-  userEnd: "",
-  userDuration: "",
-
-  // ---------- TURUN TICKET ----------
-  ticketStart: "",
-  ticketEnd: "",
-  ticketDuration: "",
-
-  // info lain
-  startAction: "",
-  finishAction: "",
-  lokasi: "",
-  deskripsi: "",
-  serviceImpact: "",
-  klasifikasi: "",
-  rootCause: "",
-  segment: "",
-  pic: "",
-  vendor: "",
+  tanggal: "", hari: "", bulanTahun: "",
+  userStart: "", userEnd: "",
+  ticketStart: "", ticketEnd: "",
+  problem: "", action: "",
+  pic: "", vendor: "",
 };
 
-const Osp = () => {
-  // UI STATE
+function Osp() {
   const [form, setForm] = useState(initialForm);
-  const [ospData, setOspData] = useState([]);
+  const [rows, setRows] = useState(() =>
+    JSON.parse(localStorage.getItem("osp") || "[]")
+  );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error,   setError]   = useState("");
 
-  /* ---------- helper ---------- */
-  const calcDuration = (start, end) => {
-    if (!start || !end) return "";
-    const [h1, m1] = start.split(":").map(Number);
-    const [h2, m2] = end.split(":").map(Number);
-    let diff = h2 * 60 + m2 - (h1 * 60 + m1);
-    if (diff < 0) diff += 24 * 60;              // lewat tengah malam
-    const hh = Math.floor(diff / 60);
-    const mm = diff % 60;
-    return `${hh} jam ${mm} menit`;
-  };
+  /* persist local */
+  useEffect(() => localStorage.setItem("osp", JSON.stringify(rows)), [rows]);
 
-  /* ---------- onChange (versi baru) ---------- */
-  const handleChange = ({ target: { name, value } }) => {
+  /* handle input */
+  const handleChange = e => {
+    const { name, value } = e.target;
     setForm(prev => {
       const next = { ...prev, [name]: value };
-
-      // Otomatis isi HARI + BULAN/TAHUN ketika tanggal diganti
       if (name === "tanggal" && value) {
         const d = new Date(value);
-        next.hari = d.toLocaleDateString("id-ID", { weekday: "long" });
-        next.bulanTahun = d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+        next.hari       = d.toLocaleDateString("id-ID", { weekday:"long" });
+        next.bulanTahun = d.toLocaleDateString("id-ID", { month:"long", year:"numeric" });
       }
-
-      // Hitung kedua durasi setiap kali jam terkait berubah
-      next.userDuration = calcDuration(next.userStart, next.userEnd);
-      next.ticketDuration = calcDuration(next.ticketStart, next.ticketEnd);
-
       return next;
     });
   };
 
-  /* ---------- submit ---------- */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const { ok, message } = await sendToGoogleSheet(form);
-      if (!ok) throw new Error(message || "Apps Script reply not ok");
+  /* kirim ke Google Sheet */
+  const GAS = import.meta.env.VITE_GAS_ENDPOINT;
 
-      setOspData(prev => [...prev, form]);
+  const send = async payload => {
+    const body = new URLSearchParams(payload).toString();
+    const res  = await fetch(GAS, {
+      method:"POST",
+      headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+      body
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error("Apps Script error");
+  };
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setLoading(true); setError("");
+    try {
+      await send(form);
+      setRows(r => [...r, form]);
       setForm(initialForm);
     } catch (err) {
       console.error(err);
       setError("Gagal mengirim data ke Google Sheet");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  // push googlesheet
-  const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT;
-
-  const sendToGoogleSheet = async (payload) => {
-    const body = new URLSearchParams(payload).toString();
-
-    console.log("Endpoint →", import.meta.env.VITE_GAS_ENDPOINT); // ✅ PENTING DI SINI
-
-    const res = await fetch(import.meta.env.VITE_GAS_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body,
-    });
-
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  };
-
-  /* ---------- exporters ---------- */
-  const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(ospData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Laporan OSP");
-    XLSX.writeFile(wb, "laporan_osp.xlsx");
-  };
-
-  const exportPDF = () => {
-    const node = document.getElementById("osp-report");
-    html2canvas(node).then((canvas) => {
-      const pdf = new jsPDF("l", "mm", "a4");
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, 10, 280, 0);
-      pdf.save("laporan_osp.pdf");
-    });
-  };
-
-  /* ---------- render ---------- */
+  /* ---------- UI ---------- */
   return (
-    <Container className="mt-4">
-      <h2 className="text-center mb-4">Laporan Gangguan Jaringan OSP</h2>
+    <Container className="py-4">
+      <h3 className="mb-3">Laporan Gangguan OSP</h3>
+      {error && <div className="alert alert-danger">{error}</div>}
 
-      {error && <div className="alert alert-danger py-2">{error}</div>}
+      <Form onSubmit={handleSubmit} className="border p-3 rounded mb-4">
 
-      <Form onSubmit={handleSubmit} className="mb-4">
-        {/* ---- Metadata ---- */}
-        <Row className="g-2 mb-2">
-          <Col md={2}>
+        {/* Tanggal – Hari – Bulan/Tahun */}
+        <Row className="g-2 mb-3">
+          <Col md={3}>
             <Form.Control
               type="date"
               name="tanggal"
@@ -154,68 +86,51 @@ const Osp = () => {
             <Form.Control
               type="text"
               name="hari"
-              placeholder="Hari"
               value={form.hari}
-              onChange={handleChange}
-              readOnly         // sekarang auto‑fill
+              placeholder="Hari"
+              readOnly
             />
           </Col>
-          <Col md={2}>
+          <Col md={3}>
             <Form.Control
               type="text"
               name="bulanTahun"
-              placeholder="Bulan/Tahun"
               value={form.bulanTahun}
-              onChange={handleChange}
+              placeholder="Bulan/Tahun"
               readOnly
             />
           </Col>
         </Row>
 
-        {/* ---- ACTION USER ---- */}
-        <h6>Waktu Action User</h6>
+        {/* Jam Action User */}
+        <h6>Jam Action User</h6>
         <Row className="g-2 mb-2">
-          <Col md={2}>
-            <Form.Control type="time" name="userStart" value={form.userStart} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="time" name="userEnd" value={form.userEnd} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="userDuration" value={form.userDuration} readOnly />
-          </Col>
+          <Col md={2}><Form.Control type="time" name="userStart" value={form.userStart} onChange={handleChange}/></Col>
+          <Col md={2}><Form.Control type="time" name="userEnd"   value={form.userEnd}   onChange={handleChange}/></Col>
         </Row>
 
-        {/* ---- TURUN TICKET ---- */}
-        <h6>Waktu Turun Ticket</h6>
+        {/* Jam Ticket Turun */}
+        <h6>Jam Ticket Turun</h6>
         <Row className="g-2 mb-2">
-          <Col md={2}>
-            <Form.Control type="time" name="ticketStart" value={form.ticketStart} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="time" name="ticketEnd" value={form.ticketEnd} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="ticketDuration" value={form.ticketDuration} readOnly />
-          </Col>
+          <Col md={2}><Form.Control type="time" name="ticketStart" value={form.ticketStart} onChange={handleChange}/></Col>
+          <Col md={2}><Form.Control type="time" name="ticketEnd"   value={form.ticketEnd}   onChange={handleChange}/></Col>
         </Row>
 
-        {/* ---- Detail lain ---- */}
-        <Row className="g-2 mb-2">
-          <Col md={2}><Form.Control type="text" name="startAction" placeholder="Start Action" value={form.startAction} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="finishAction" placeholder="Finish Action" value={form.finishAction} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="lokasi" placeholder="Lokasi" value={form.lokasi} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="segment" placeholder="Segment" value={form.segment} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="deskripsi" placeholder="Deskripsi" value={form.deskripsi} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="serviceImpact" placeholder="Service Impact" value={form.serviceImpact} onChange={handleChange} /></Col>
-        </Row>
-
+        {/* Problem & Action */}
         <Row className="g-2 mb-3">
-          <Col md={2}><Form.Control type="text" name="klasifikasi" placeholder="Klasifikasi" value={form.klasifikasi} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="rootCause" placeholder="Root Cause" value={form.rootCause} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="pic" placeholder="PIC" value={form.pic} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="vendor" placeholder="Vendor" value={form.vendor} onChange={handleChange} /></Col>
-          <Col md={4} className="d-flex align-items-end">
+          <Col md={4}>
+            <Form.Control name="problem" placeholder="Problem" value={form.problem} onChange={handleChange}/>
+          </Col>
+          <Col md={4}>
+            <Form.Control name="action"  placeholder="Action"  value={form.action}  onChange={handleChange}/>
+          </Col>
+        </Row>
+
+        {/* PIC – Vendor – Submit */}
+        <Row className="g-2">
+          <Col md={3}><Form.Control name="pic"    placeholder="PIC"    value={form.pic}    onChange={handleChange}/></Col>
+          <Col md={3}><Form.Control name="vendor" placeholder="Vendor" value={form.vendor} onChange={handleChange}/></Col>
+          <Col md={2} className="d-flex align-items-end">
             <Button type="submit" className="w-100" disabled={loading}>
               {loading ? "Mengirim..." : "Tambah"}
             </Button>
@@ -223,57 +138,30 @@ const Osp = () => {
         </Row>
       </Form>
 
-      {/* ---- Export buttons ---- */}
-      <ButtonGroup className="mb-3">
-        <Button variant="success" onClick={exportExcel}>Download Excel</Button>
-        <Button variant="danger" onClick={exportPDF} >Download PDF</Button>
-      </ButtonGroup>
-
-      {/* ---- Tabel ---- */}
-      <div id="osp-report">
-        <Table striped bordered hover responsive size="sm">
-          <thead>
-            <tr>
-              {[
-                "No", "Tanggal", "Hari", "Bulan/Tahun",
-                "User Start", "User End", "Durasi User",
-                "Ticket Start", "Ticket End", "Durasi Ticket",
-                "Start Action", "Finish Action", "Lokasi", "Segment",
-                "Deskripsi", "Service Impact", "Klasifikasi", "Root Cause",
-                "PIC", "Vendor",
-              ].map(h => <th key={h}>{h}</th>)}
+      {/* Tabel Histori */}
+      <Table striped bordered hover size="sm">
+        <thead>
+          <tr>{[
+            "No","Tanggal","Hari","Bulan/Tahun",
+            "User Start","User End","Ticket Start","Ticket End",
+            "Problem","Action","PIC","Vendor"
+          ].map(h => <th key={h}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((r,i)=>(
+            <tr key={i}>
+              <td>{i+1}</td>
+              <td>{r.tanggal}</td><td>{r.hari}</td><td>{r.bulanTahun}</td>
+              <td>{r.userStart}</td><td>{r.userEnd}</td>
+              <td>{r.ticketStart}</td><td>{r.ticketEnd}</td>
+              <td>{r.problem}</td><td>{r.action}</td>
+              <td>{r.pic}</td><td>{r.vendor}</td>
             </tr>
-          </thead>
-          <tbody>
-            {ospData.map((d, i) => (
-              <tr key={i}>
-                <td>{i + 1}</td>
-                <td>{d.tanggal}</td>
-                <td>{d.hari}</td>
-                <td>{d.bulanTahun}</td>
-                <td>{d.userStart}</td>
-                <td>{d.userEnd}</td>
-                <td>{d.userDuration}</td>
-                <td>{d.ticketStart}</td>
-                <td>{d.ticketEnd}</td>
-                <td>{d.ticketDuration}</td>
-                <td>{d.startAction}</td>
-                <td>{d.finishAction}</td>
-                <td>{d.lokasi}</td>
-                <td>{d.segment}</td>
-                <td>{d.deskripsi}</td>
-                <td>{d.serviceImpact}</td>
-                <td>{d.klasifikasi}</td>
-                <td>{d.rootCause}</td>
-                <td>{d.pic}</td>
-                <td>{d.vendor}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </div>
+          ))}
+        </tbody>
+      </Table>
     </Container>
   );
-};
+}
 
 export default Osp;
