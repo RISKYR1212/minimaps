@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
 
@@ -25,11 +26,23 @@ const empty = {
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
 
+  const fetchData = async () => {
+    // fetch(`${endpoint}?mode=read`)
+    //   .then(r=>r.json()).then(j=>setRows(j.records||[]))
+    //   .catch(console.error);
+    try {
+      const fetch = await axios.get(`${endpoint}?mode=read`)
+
+      setRows(fetch.data.records)
+    } catch (error) {
+      // toast
+      console.log("Error")
+    }
+  }
+
   /* ▼ ambil histori dari Google Sheet sekali saja */
   useEffect(()=>{
-    fetch(`${endpoint}?mode=read`)
-      .then(r=>r.json()).then(j=>setRows(j.records||[]))
-      .catch(console.error);
+    fetchData()
   },[]);
 
   /* hitung durasi & tanggal helper */
@@ -59,7 +72,7 @@ const empty = {
     e.preventDefault(); setLoading(true); setError("");
     try{
       await send(form);           // kirim ke sheet
-      setRows(r=>[...r,form]);    // tampil di tabel
+      // setRows(r=>[...r,form]);    // tampil di tabel
       setForm(empty);
     }catch(err){setError(err.message);}finally{setLoading(false);}
   };
@@ -139,9 +152,9 @@ const empty = {
           {rows.map((r,i)=>(
             <tr key={i}>
               <td>{i+1}</td>
-              <td>{r.tanggal}</td><td>{r.hari}</td><td>{r.bulanTahun}</td>
-              <td>{r.userStart}</td><td>{r.userEnd}</td><td>{r.durasiUser}</td>
-              <td>{r.ticketStart}</td><td>{r.ticketEnd}</td><td>{r.durasiTicket}</td>
+              <td>{r.tanggal}</td><td>{r.hari}</td><td>{r.bulan_tahun}</td>
+              <td>{r.start_user}</td><td>{r.end_user}</td><td>{r.hasil_durasi_user}</td>
+              <td>{r.start_ticket}</td><td>{r.end_ticket}</td><td>{r.hasil_durasi_ticket}</td>
               <td>{r.problem}</td><td>{r.action}</td>
               <td>{r.joinClosure}</td><td>{r.pic}</td><td>{r.vendor}</td>
             </tr>
