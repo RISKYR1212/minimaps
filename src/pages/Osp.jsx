@@ -15,33 +15,33 @@ const initialForm = {
 
   // ---------- ACTION USER TEAM ----------
   userStart: "",
-  userEnd:   "",
+  userEnd: "",
   userDuration: "",
 
   // ---------- TURUN TICKET ----------
   ticketStart: "",
-  ticketEnd:   "",
+  ticketEnd: "",
   ticketDuration: "",
 
   // info lain
-  startAction:  "",
+  startAction: "",
   finishAction: "",
-  lokasi:       "",
-  deskripsi:    "",
-  serviceImpact:"",
-  klasifikasi:  "",
-  rootCause:    "",
-  segment:      "",
-  pic:          "",
-  vendor:       "",
+  lokasi: "",
+  deskripsi: "",
+  serviceImpact: "",
+  klasifikasi: "",
+  rootCause: "",
+  segment: "",
+  pic: "",
+  vendor: "",
 };
 
 const Osp = () => {
   // UI STATE
-  const [form, setForm]       = useState(initialForm);
+  const [form, setForm] = useState(initialForm);
   const [ospData, setOspData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
 
   /* ---------- helper ---------- */
   const calcDuration = (start, end) => {
@@ -63,12 +63,12 @@ const Osp = () => {
       // Otomatis isi HARI + BULAN/TAHUN ketika tanggal diganti
       if (name === "tanggal" && value) {
         const d = new Date(value);
-        next.hari       = d.toLocaleDateString("id-ID", { weekday: "long" });
+        next.hari = d.toLocaleDateString("id-ID", { weekday: "long" });
         next.bulanTahun = d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
       }
 
       // Hitung kedua durasi setiap kali jam terkait berubah
-      next.userDuration   = calcDuration(next.userStart,   next.userEnd);
+      next.userDuration = calcDuration(next.userStart, next.userEnd);
       next.ticketDuration = calcDuration(next.ticketStart, next.ticketEnd);
 
       return next;
@@ -95,23 +95,24 @@ const Osp = () => {
   };
 
   // push googlesheet
-const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT;
+  const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT;
 
-const sendToGoogleSheet = async (payload) => {
-  // encode jadi query string
-  const body = new URLSearchParams(payload).toString();
+  const sendToGoogleSheet = async (payload) => {
+    const body = new URLSearchParams(payload).toString();
 
-  const res = await fetch(import.meta.env.VITE_GAS_ENDPOINT, {
-    method: 'POST',
-    headers: {               // ← cukup header standar
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body,
-  });
+    console.log("Endpoint →", import.meta.env.VITE_GAS_ENDPOINT); // ✅ PENTING DI SINI
 
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();         // { ok:true }
-};
+    const res = await fetch(import.meta.env.VITE_GAS_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body,
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  };
 
   /* ---------- exporters ---------- */
   const exportExcel = () => {
@@ -175,10 +176,10 @@ const sendToGoogleSheet = async (payload) => {
         <h6>Waktu Action User</h6>
         <Row className="g-2 mb-2">
           <Col md={2}>
-            <Form.Control type="time" name="userStart"  value={form.userStart}  onChange={handleChange} />
+            <Form.Control type="time" name="userStart" value={form.userStart} onChange={handleChange} />
           </Col>
           <Col md={2}>
-            <Form.Control type="time" name="userEnd"    value={form.userEnd}    onChange={handleChange} />
+            <Form.Control type="time" name="userEnd" value={form.userEnd} onChange={handleChange} />
           </Col>
           <Col md={2}>
             <Form.Control type="text" name="userDuration" value={form.userDuration} readOnly />
@@ -192,7 +193,7 @@ const sendToGoogleSheet = async (payload) => {
             <Form.Control type="time" name="ticketStart" value={form.ticketStart} onChange={handleChange} />
           </Col>
           <Col md={2}>
-            <Form.Control type="time" name="ticketEnd"   value={form.ticketEnd}   onChange={handleChange} />
+            <Form.Control type="time" name="ticketEnd" value={form.ticketEnd} onChange={handleChange} />
           </Col>
           <Col md={2}>
             <Form.Control type="text" name="ticketDuration" value={form.ticketDuration} readOnly />
@@ -201,19 +202,19 @@ const sendToGoogleSheet = async (payload) => {
 
         {/* ---- Detail lain ---- */}
         <Row className="g-2 mb-2">
-          <Col md={2}><Form.Control type="text" name="startAction"   placeholder="Start Action"   value={form.startAction}   onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="finishAction"  placeholder="Finish Action"  value={form.finishAction}  onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="lokasi"        placeholder="Lokasi"         value={form.lokasi}        onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="segment"       placeholder="Segment"        value={form.segment}       onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="deskripsi"     placeholder="Deskripsi"      value={form.deskripsi}     onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="startAction" placeholder="Start Action" value={form.startAction} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="finishAction" placeholder="Finish Action" value={form.finishAction} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="lokasi" placeholder="Lokasi" value={form.lokasi} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="segment" placeholder="Segment" value={form.segment} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="deskripsi" placeholder="Deskripsi" value={form.deskripsi} onChange={handleChange} /></Col>
           <Col md={2}><Form.Control type="text" name="serviceImpact" placeholder="Service Impact" value={form.serviceImpact} onChange={handleChange} /></Col>
         </Row>
 
         <Row className="g-2 mb-3">
           <Col md={2}><Form.Control type="text" name="klasifikasi" placeholder="Klasifikasi" value={form.klasifikasi} onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="rootCause"   placeholder="Root Cause" value={form.rootCause}   onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="pic"         placeholder="PIC"         value={form.pic}         onChange={handleChange} /></Col>
-          <Col md={2}><Form.Control type="text" name="vendor"      placeholder="Vendor"      value={form.vendor}      onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="rootCause" placeholder="Root Cause" value={form.rootCause} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="pic" placeholder="PIC" value={form.pic} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="vendor" placeholder="Vendor" value={form.vendor} onChange={handleChange} /></Col>
           <Col md={4} className="d-flex align-items-end">
             <Button type="submit" className="w-100" disabled={loading}>
               {loading ? "Mengirim..." : "Tambah"}
@@ -225,7 +226,7 @@ const sendToGoogleSheet = async (payload) => {
       {/* ---- Export buttons ---- */}
       <ButtonGroup className="mb-3">
         <Button variant="success" onClick={exportExcel}>Download Excel</Button>
-        <Button variant="danger"  onClick={exportPDF} >Download PDF</Button>
+        <Button variant="danger" onClick={exportPDF} >Download PDF</Button>
       </ButtonGroup>
 
       {/* ---- Tabel ---- */}
