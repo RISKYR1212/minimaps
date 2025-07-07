@@ -94,22 +94,24 @@ const Osp = () => {
     }
   };
 
-  /* ---------- fetch to GAS ---------- */
-  const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT;
+  // push googlesheet
+const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT;
 
-  const sendToGoogleSheet = async (payload) => {
-  // ubah object → "key1=val1&key2=val2"
+const sendToGoogleSheet = async (payload) => {
   const body = new URLSearchParams(payload).toString();
+  console.log("Endpoint →", GAS_ENDPOINT);
 
-  console.log("Endpoint →", import.meta.env.VITE_GAS_ENDPOINT);
-
-  const res = await fetch(import.meta.env.VITE_GAS_ENDPOINT, {
+  const res = await fetch(GAS_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
-  return res.json();          // { ok:true }
+
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();     // <-- { ok:true }
 };
+
+
 
 
   /* ---------- exporters ---------- */
