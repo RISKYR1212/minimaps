@@ -98,21 +98,20 @@ const Osp = () => {
 const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT;
 
 const sendToGoogleSheet = async (payload) => {
+  // encode jadi query string
   const body = new URLSearchParams(payload).toString();
-  console.log("Endpoint →", GAS_ENDPOINT);
 
-  const res = await fetch(GAS_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  const res = await fetch(import.meta.env.VITE_GAS_ENDPOINT, {
+    method: 'POST',
+    headers: {               // ← cukup header standar
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
     body,
   });
 
-  if (!res.ok) throw new Error("HTTP " + res.status);
-  return res.json();     // <-- { ok:true }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();         // { ok:true }
 };
-
-
-
 
   /* ---------- exporters ---------- */
   const exportExcel = () => {
