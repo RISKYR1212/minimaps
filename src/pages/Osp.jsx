@@ -60,10 +60,10 @@ const Osp = () => {
     const next = { ...form, [name]: value };
 
     // hitung masing-masing durasi
-    if (name === "userStart" || name === "userEnd") {
+    if (name === "ticketStart" || name === "ticketEnd") {
       next.userDuration = calcDuration(next.userStart, next.userEnd);
     }
-    if (name === "ticketStart" || name === "ticketEnd") {
+    if (name === "userStart" || name === "userEnd") {
       next.ticketDuration = calcDuration(next.ticketStart, next.ticketEnd);
     }
     setForm(next);
