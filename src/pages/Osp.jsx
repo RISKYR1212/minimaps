@@ -1,17 +1,19 @@
 // src/pages/Osp.jsx
-// src/pages/Osp.jsx
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
+
+const capacities = ["48","96","144","288"];
 
 /* ---------- state awal ---------- */
 const initialForm = {
   userStart:"", userEnd:"",
   ticketStart:"", ticketEnd:"",
   durasiUser:"", durasiTicket:"",
+  problem:"", action:"",
+  joinClosure:"",              // ← NEW
   pic:"", vendor:"",
 };
 
-/* hitung selisih HH:MM → “X jam Y menit” */
 const calc = (s,e)=>{
   if(!s||!e) return "";
   const [h1,m1] = s.split(":").map(Number);
@@ -21,15 +23,14 @@ const calc = (s,e)=>{
   return `${Math.floor(diff/60)} jam ${diff%60} menit`;
 };
 
- function Osp(){
+function Osp(){
   const [form,setForm] = useState(initialForm);
   const [rows,setRows] = useState(()=>JSON.parse(localStorage.getItem("osp")||"[]"));
-  const [loading,setLd]=useState(false);
-  const [error,setErr] = useState("");
+  const [loading,setLd] = useState(false);
+  const [error,setErr]  = useState("");
 
   useEffect(()=>localStorage.setItem("osp",JSON.stringify(rows)),[rows]);
 
-  /* update form & durasi */
   const handleChange = e =>{
     const {name,value} = e.target;
     setForm(prev=>{
@@ -40,10 +41,9 @@ const calc = (s,e)=>{
     });
   };
 
-  /* kirim */
   const GAS = import.meta.env.VITE_GAS_ENDPOINT;
-  const send = async p =>{
-    const body = new URLSearchParams(p).toString();
+  const send = async payload=>{
+    const body = new URLSearchParams(payload).toString();
     const res  = await fetch(GAS,{method:"POST",headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
     const data = await res.json();
     if(!res.ok||!data.ok) throw new Error("Apps Script error");
@@ -56,10 +56,10 @@ const calc = (s,e)=>{
       setRows(r=>[...r,form]);
       setForm(initialForm);
     }catch(err){console.error(err); setErr("Gagal kirim ke Sheet");}
-    finally{setLd(false);}
+    finally{ setLd(false); }
   };
 
-  /* ---------- UI ---------- */
+  /* UI */
   return(
     <Container className="py-4">
       <h4 className="mb-3">Durasi Gangguan OSP</h4>
@@ -67,6 +67,7 @@ const calc = (s,e)=>{
 
       <Form onSubmit={submit} className="border p-3 rounded mb-4">
 
+        {/* Action User */}
         <h6>Jam Action User</h6>
         <Row className="g-2 mb-2">
           <Col md={2}><Form.Control type="time" name="userStart" value={form.userStart} onChange={handleChange}/></Col>
@@ -74,6 +75,7 @@ const calc = (s,e)=>{
           <Col md={3}><Form.Control type="text" value={form.durasiUser} readOnly placeholder="Durasi User"/></Col>
         </Row>
 
+        {/* Ticket Turun */}
         <h6>Jam Ticket Turun</h6>
         <Row className="g-2 mb-2">
           <Col md={2}><Form.Control type="time" name="ticketStart" value={form.ticketStart} onChange={handleChange}/></Col>
@@ -81,6 +83,23 @@ const calc = (s,e)=>{
           <Col md={3}><Form.Control type="text" value={form.durasiTicket} readOnly placeholder="Durasi Ticket"/></Col>
         </Row>
 
+        {/* Problem / Action */}
+        <Row className="g-2 mb-2">
+          <Col md={4}><Form.Control name="problem" placeholder="Problem" value={form.problem} onChange={handleChange}/></Col>
+          <Col md={4}><Form.Control name="action"  placeholder="Action"  value={form.action}  onChange={handleChange}/></Col>
+        </Row>
+
+        {/* Join Closure Capacity */}
+        <Row className="g-2 mb-2">
+          <Col md={4}>
+            <Form.Select name="joinClosure" value={form.joinClosure} onChange={handleChange}>
+              <option value="">Join Closure Capacity</option>
+              {capacities.map(c=><option key={c} value={c}>{c}</option>)}
+            </Form.Select>
+          </Col>
+        </Row>
+
+        {/* PIC / Vendor */}
         <Row className="g-2">
           <Col md={3}><Form.Control name="pic"    placeholder="PIC"    value={form.pic}    onChange={handleChange}/></Col>
           <Col md={3}><Form.Control name="vendor" placeholder="Vendor" value={form.vendor} onChange={handleChange}/></Col>
@@ -92,10 +111,13 @@ const calc = (s,e)=>{
         </Row>
       </Form>
 
-      {/* tabel */}
+      {/* Tabel */}
       <Table striped bordered hover size="sm">
         <thead>
-          <tr>{["No","Durasi User","Durasi Ticket","PIC","Vendor"].map(h=><th key={h}>{h}</th>)}</tr>
+          <tr>{[
+            "No","Durasi User","Durasi Ticket",
+            "Problem","Action","Join Closure","PIC","Vendor"
+          ].map(h=><th key={h}>{h}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((r,i)=>(
@@ -103,6 +125,9 @@ const calc = (s,e)=>{
               <td>{i+1}</td>
               <td>{r.durasiUser}</td>
               <td>{r.durasiTicket}</td>
+              <td>{r.problem}</td>
+              <td>{r.action}</td>
+              <td>{r.joinClosure}</td>
               <td>{r.pic}</td>
               <td>{r.vendor}</td>
             </tr>
@@ -112,6 +137,7 @@ const calc = (s,e)=>{
     </Container>
   );
 }
+
 
 
 export default Osp;
