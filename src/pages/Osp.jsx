@@ -1,24 +1,29 @@
+// React 18 + Vite + React-Bootstrap 5
 import React, { useState } from "react";
 import {
-  Container,
-  Form,
-  Button,
-  Table,
-  Row,
-  Col,
-  ButtonGroup,
+  Container, Row, Col, Form, Button, ButtonGroup, Table,
 } from "react-bootstrap";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 
 const initialForm = {
+  // metadata
   tanggal: "",
   hari: "",
   bulanTahun: "",
-  startTime: "",
-  endTime: "",
-  duration: "",
+
+  // ---------- ACTION USER TEAM ----------
+  userStart: "",
+  userEnd: "",
+  userDuration: "",
+
+  // ---------- TURUN TICKET ----------
+  ticketStart: "",
+  ticketEnd: "",
+  ticketDuration: "",
+
+  // info lain
   startAction: "",
   finishAction: "",
   lokasi: "",
@@ -32,172 +37,159 @@ const initialForm = {
 };
 
 const Osp = () => {
-  const [ospData, setOspData] = useState([]);
+  // UI STATE
   const [form, setForm] = useState(initialForm);
+  const [ospData, setOspData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    const updatedForm = {
-      ...form,
-      [name]: value,
-    };
-
-    if (name === "startTime" || name === "endTime") {
-      const start = name === "startTime" ? value : form.startTime;
-      const end = name === "endTime" ? value : form.endTime;
-      if (start && end) {
-        updatedForm.duration = calculateDuration(start, end);
-      }
-    }
-
-    setForm(updatedForm);
-  };
-
-  const calculateDuration = (start, end) => {
+  /* ---------- helper ---------- */
+  const calcDuration = (start, end) => {
+    if (!start || !end) return "";
     const [h1, m1] = start.split(":").map(Number);
     const [h2, m2] = end.split(":").map(Number);
-    const startMinutes = h1 * 60 + m1;
-    const endMinutes = h2 * 60 + m2;
-    const diff = endMinutes - startMinutes;
-    const hours = Math.floor(diff / 60);
-    const minutes = diff % 60;
-    return `${hours} jam ${minutes} menit`;
+    let diff = h2 * 60 + m2 - (h1 * 60 + m1);
+    if (diff < 0) diff += 24 * 60;          
+    const hh = Math.floor(diff / 60);
+    const mm = diff % 60;
+    return `${hh} jam ${mm} menit`;
   };
 
+  /* ---------- onChange ---------- */
+  const handleChange = ({ target: { name, value } }) => {
+    const next = { ...form, [name]: value };
+
+    // hitung masing-masing durasi
+    if (name === "userStart" || name === "userEnd") {
+      next.userDuration = calcDuration(next.userStart, next.userEnd);
+    }
+    if (name === "ticketStart" || name === "ticketEnd") {
+      next.ticketDuration = calcDuration(next.ticketStart, next.ticketEnd);
+    }
+    setForm(next);
+  };
+
+  /* ---------- submit ---------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
     try {
-      const response = await sendToGoogleSheet(form);
-      if (response.ok) {
-        setOspData((prev) => [...prev, form]);
-        setForm(initialForm);
-      } else {
-        console.error(" Gagal kirim ke Google Sheets:", response.status);
-      }
-    } catch (error) {
-      console.error(" Error kirim ke Google Sheets:", error);
+      const { ok, message } = await sendToGoogleSheet(form);
+      if (!ok) throw new Error(message || "Apps Script reply not ok");
+
+      setOspData((prev) => [...prev, form]);
+      setForm(initialForm);
+    } catch (err) {
+      console.error(err);
+      setError("Gagal mengirim data ke Google Sheet");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const url = "https://script.google.com/macros/s/AKfycbxyv9FfTmoR1rJjKJhIWNfxqghdFdHHKmSJAszE2-Y/dev";
+  /* ---------- fetch to GAS ---------- */
+  const GAS_ENDPOINT = import.meta.env.VITE_GAS_ENDPOINT; 
 
-  const sendToGoogleSheet = async (data) => {
-    return fetch(url, {
+  const sendToGoogleSheet = async (payload) => {
+    const res = await fetch(GAS_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
+    return res.json();          
   };
 
+  /* ---------- exporters ---------- */
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(ospData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Laporan OSP");
+    XLSX.writeFile(wb, "laporan_osp.xlsx");
+  };
 
   const exportPDF = () => {
-    const input = document.getElementById("osp-report");
-    html2canvas(input).then((canvas) => {
-      const img = canvas.toDataURL("image/png");
+    const node = document.getElementById("osp-report");
+    html2canvas(node).then((canvas) => {
       const pdf = new jsPDF("l", "mm", "a4");
-      pdf.addImage(img, "PNG", 10, 10, 280, 0);
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, 10, 280, 0);
       pdf.save("laporan_osp.pdf");
     });
   };
 
-  const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(ospData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Laporan Gangguan");
-    XLSX.writeFile(wb, "laporan_osp.xlsx");
-  };
-
+  /* ---------- render ---------- */
   return (
     <Container className="mt-4">
       <h2 className="text-center mb-4">Laporan Gangguan Jaringan OSP</h2>
 
+      {error && <div className="alert alert-danger py-2">{error}</div>}
+
       <Form onSubmit={handleSubmit} className="mb-4">
-        <Row className="mb-2">
-          <Col md={2}>
-            <Form.Control type="date" name="tanggal" value={form.tanggal} onChange={handleChange} required />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="hari" placeholder="Hari" value={form.hari} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="bulanTahun" placeholder="Bulan / Tahun" value={form.bulanTahun} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="time" name="startTime" value={form.startTime} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="time" name="endTime" value={form.endTime} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="duration" placeholder="Duration" value={form.duration} readOnly />
-          </Col>
+        {/* ---- Metadata ---- */}
+        <Row className="g-2 mb-2">
+          <Col md={2}><Form.Control type="date" name="tanggal" value={form.tanggal} onChange={handleChange} required /></Col>
+          <Col md={2}><Form.Control type="text" name="hari" placeholder="Hari" value={form.hari} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="bulanTahun" placeholder="Bulan/Tahun" value={form.bulanTahun} onChange={handleChange} /></Col>
         </Row>
 
-        <Row className="mb-2">
-          <Col md={2}>
-            <Form.Control type="text" name="startAction" placeholder="Start Action" value={form.startAction} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="finishAction" placeholder="Finish Action" value={form.finishAction} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="lokasi" placeholder="Lokasi" value={form.lokasi} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="segment" placeholder="Segment" value={form.segment} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="deskripsi" placeholder="Deskripsi" value={form.deskripsi} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="serviceImpact" placeholder="Service Impact" value={form.serviceImpact} onChange={handleChange} />
-          </Col>
+        {/* ---- ACTION USER ---- */}
+        <h6>Waktu Action User</h6>
+        <Row className="g-2 mb-2">
+          <Col md={2}><Form.Control type="time" lang="en-GB" name="userStart" value={form.userStart} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="time" lang="en-GB" name="userEnd" value={form.userEnd} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="userDuration" placeholder="Durasi User" value={form.userDuration} readOnly /></Col>
         </Row>
 
-        <Row className="mb-2">
-          <Col md={2}>
-            <Form.Control type="text" name="klasifikasi" placeholder="Klasifikasi" value={form.klasifikasi} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="rootCause" placeholder="Root Cause" value={form.rootCause} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="pic" placeholder="PIC" value={form.pic} onChange={handleChange} />
-          </Col>
-          <Col md={2}>
-            <Form.Control type="text" name="vendor" placeholder="Vendor/Mandor" value={form.vendor} onChange={handleChange} />
-          </Col>
+        {/* ---- TURUN TICKET ---- */}
+        <h6>Waktu Turun Ticket</h6>
+        <Row className="g-2 mb-2">
+          <Col md={2}><Form.Control type="time" lang="en-GB" name="ticketStart" value={form.ticketStart} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="time" lang="en-GB" name="ticketEnd" value={form.ticketEnd} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="ticketDuration" placeholder="Durasi Ticket" value={form.ticketDuration} readOnly /></Col>
         </Row>
 
-        <Button type="submit">Tambah</Button>
+        {/* ---- Detail lain ---- */}
+        <Row className="g-2 mb-2">
+          <Col md={2}><Form.Control type="text" name="startAction" placeholder="Start Action" value={form.startAction} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="finishAction" placeholder="Finish Action" value={form.finishAction} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="lokasi" placeholder="Lokasi" value={form.lokasi} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="segment" placeholder="Segment" value={form.segment} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="deskripsi" placeholder="Deskripsi" value={form.deskripsi} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="serviceImpact" placeholder="Service Impact" value={form.serviceImpact} onChange={handleChange} /></Col>
+        </Row>
+
+        <Row className="g-2 mb-3">
+          <Col md={2}><Form.Control type="text" name="klasifikasi" placeholder="Klasifikasi" value={form.klasifikasi} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="rootCause" placeholder="Root Cause" value={form.rootCause} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="pic" placeholder="PIC" value={form.pic} onChange={handleChange} /></Col>
+          <Col md={2}><Form.Control type="text" name="vendor" placeholder="Vendor" value={form.vendor} onChange={handleChange} /></Col>
+          <Col md={4} className="d-flex align-items-end">
+            <Button type="submit" className="w-100" disabled={loading}>
+              {loading ? "Mengirim..." : "Tambah"}
+            </Button>
+          </Col>
+        </Row>
       </Form>
 
+      {/* ---- Export buttons ---- */}
       <ButtonGroup className="mb-3">
-        <Button variant="success" onClick={exportExcel}>Export Excel</Button>
-        <Button variant="danger" onClick={exportPDF}>Export PDF</Button>
+        <Button variant="success" onClick={exportExcel}>Download Excel</Button>
+        <Button variant="danger" onClick={exportPDF} >Download PDF</Button>
       </ButtonGroup>
 
+      {/* ---- Tabel ---- */}
       <div id="osp-report">
         <Table striped bordered hover responsive size="sm">
           <thead>
             <tr>
-              <th>No</th>
-              <th>Tanggal</th>
-              <th>Hari</th>
-              <th>Bulan/Tahun</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Duration</th>
-              <th>Start Action</th>
-              <th>Finish Action</th>
-              <th>Lokasi</th>
-              <th>Segment</th>
-              <th>Deskripsi</th>
-              <th>Service Impact</th>
-              <th>Klasifikasi</th>
-              <th>Root Cause</th>
-              <th>PIC</th>
-              <th>Vendor</th>
+              {[
+                "No", "Tanggal", "Hari", "Bulan/Tahun",
+                "User Start", "User End", "Durasi User",
+                "Ticket Start", "Ticket End", "Durasi Ticket",
+                "Start Action", "Finish Action", "Lokasi", "Segment",
+                "Deskripsi", "Service Impact", "Klasifikasi", "Root Cause",
+                "PIC", "Vendor",
+              ].map((h) => <th key={h}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -207,9 +199,12 @@ const Osp = () => {
                 <td>{d.tanggal}</td>
                 <td>{d.hari}</td>
                 <td>{d.bulanTahun}</td>
-                <td>{d.startTime}</td>
-                <td>{d.endTime}</td>
-                <td>{d.duration}</td>
+                <td>{d.userStart}</td>
+                <td>{d.userEnd}</td>
+                <td>{d.userDuration}</td>
+                <td>{d.ticketStart}</td>
+                <td>{d.ticketEnd}</td>
+                <td>{d.ticketDuration}</td>
                 <td>{d.startAction}</td>
                 <td>{d.finishAction}</td>
                 <td>{d.lokasi}</td>

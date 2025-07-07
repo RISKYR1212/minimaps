@@ -55,9 +55,9 @@ const Core = () => {
     ${polylines.map(polyline => {
       const hasLine = polyline.coords.length > 1;
       const hasPoints = polyline.coords.length > 0;
-      
+
       if (!hasLine && !hasPoints) return '';
-      
+
       return `
     <Folder>
       <name>${polyline.name}</name>
@@ -122,7 +122,7 @@ const Core = () => {
           name: `Titik ${activePolyline.coords.length + 1}`,
         };
 
-        setPolylines(prev => prev.map(polyline => 
+        setPolylines(prev => prev.map(polyline =>
           polyline.id === activePolylineId
             ? { ...polyline, coords: [...polyline.coords, newCoord] }
             : polyline
@@ -135,12 +135,12 @@ const Core = () => {
   const deleteSelectedMarker = () => {
     if (!selectedMarker) return;
 
-    setPolylines(prev => prev.map(polyline => 
+    setPolylines(prev => prev.map(polyline =>
       polyline.id === selectedMarker.polylineId
-        ? { 
-            ...polyline, 
-            coords: polyline.coords.filter((_, i) => i !== selectedMarker.index) 
-          }
+        ? {
+          ...polyline,
+          coords: polyline.coords.filter((_, i) => i !== selectedMarker.index)
+        }
         : polyline
     ));
     setSelectedMarker(null);
@@ -163,29 +163,29 @@ const Core = () => {
   };
 
   const onMarkerDragEnd = (index, polylineId, e) => {
-    setPolylines(prev => prev.map(polyline => 
+    setPolylines(prev => prev.map(polyline =>
       polyline.id === polylineId
         ? {
-            ...polyline,
-            coords: polyline.coords.map((coord, i) => 
-              i === index
-                ? { ...coord, lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }
-                : coord
-            )
-          }
+          ...polyline,
+          coords: polyline.coords.map((coord, i) =>
+            i === index
+              ? { ...coord, lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }
+              : coord
+          )
+        }
         : polyline
     ));
   };
 
   const handleNameChange = (index, polylineId, newName) => {
-    setPolylines(prev => prev.map(polyline => 
+    setPolylines(prev => prev.map(polyline =>
       polyline.id === polylineId
         ? {
-            ...polyline,
-            coords: polyline.coords.map((coord, i) => 
-              i === index ? { ...coord, name: newName } : coord
-            )
-          }
+          ...polyline,
+          coords: polyline.coords.map((coord, i) =>
+            i === index ? { ...coord, name: newName } : coord
+          )
+        }
         : polyline
     ));
   };
@@ -219,13 +219,13 @@ const Core = () => {
   };
 
   const updatePolylineName = (id, newName) => {
-    setPolylines(prev => prev.map(polyline => 
+    setPolylines(prev => prev.map(polyline =>
       polyline.id === id ? { ...polyline, name: newName } : polyline
     ));
   };
 
   const updatePolylineColor = (id, newColor) => {
-    setPolylines(prev => prev.map(polyline => 
+    setPolylines(prev => prev.map(polyline =>
       polyline.id === id ? { ...polyline, color: newColor } : polyline
     ));
   };
@@ -244,12 +244,12 @@ const Core = () => {
           subdomains={["mt0", "mt1", "mt2", "mt3"]}
         />
         <MapClickHandler />
-        
+
         {polylines.map(polyline => (
           <React.Fragment key={polyline.id}>
             {polyline.coords.length > 1 && (
-              <Polyline 
-                positions={polyline.coords.map(c => [c.lat, c.lng])} 
+              <Polyline
+                positions={polyline.coords.map(c => [c.lat, c.lng])}
                 color={polyline.color}
                 pathOptions={{ color: polyline.color }}
               />
@@ -287,7 +287,7 @@ const Core = () => {
           zIndex: 1001,
         }}
       >
-        {showSidebar ? "Sembunyikan" : "Tampilkan"} Sidebar
+        {showSidebar ? "Sembunyikan" : "Tampilkan"} sidebar
       </button>
 
       {showSidebar && (
@@ -323,7 +323,7 @@ const Core = () => {
               onChange={(e) => setCoreCount(e.target.value)}
             />
           </div>
-          
+
           <div className="d-flex gap-2 mb-3">
             <button className="btn btn-primary flex-grow-1" onClick={generateCores}>
               Generate Core
@@ -332,7 +332,7 @@ const Core = () => {
               Export Excel
             </button>
           </div>
-          
+
           <div className="d-grid mb-3">
             <button className="btn btn-warning" onClick={exportAsplanToKML}>
               Export Asplan (KML)
@@ -341,17 +341,17 @@ const Core = () => {
 
           <div className="mb-3">
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <h6 className="mb-0">Daftar Polyline</h6>
-              <button 
+              <h6 className="mb-0"> Polyline </h6>
+              <button
                 className="btn btn-sm btn-success"
                 onClick={addNewPolyline}
               >
-                + Tambah
+                Tambah
               </button>
             </div>
             <div className="list-group">
               {polylines.map(polyline => (
-                <div 
+                <div
                   key={polyline.id}
                   className={`list-group-item list-group-item-action ${activePolylineId === polyline.id ? 'active' : ''}`}
                   onClick={() => setActivePolylineId(polyline.id)}
@@ -359,7 +359,7 @@ const Core = () => {
                 >
                   <div className="d-flex justify-content-between align-items-center">
                     <div className="d-flex align-items-center">
-                      <div 
+                      <div
                         style={{
                           width: "16px",
                           height: "16px",
@@ -387,7 +387,7 @@ const Core = () => {
                         style={{ width: "24px", height: "24px" }}
                       />
                       {polylines.length > 1 && (
-                        <button 
+                        <button
                           className="btn btn-sm btn-danger ms-2"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -431,14 +431,14 @@ const Core = () => {
             {polylines.map((polyline, idx) => (
               <div className="accordion-item" key={polyline.id}>
                 <h2 className="accordion-header">
-                  <button 
+                  <button
                     className={`accordion-button ${activePolylineId === polyline.id ? '' : 'collapsed'}`}
-                    type="button" 
-                    data-bs-toggle="collapse" 
+                    type="button"
+                    data-bs-toggle="collapse"
                     data-bs-target={`#collapse-${polyline.id}`}
                     onClick={() => setActivePolylineId(polyline.id)}
                   >
-                    <div 
+                    <div
                       style={{
                         width: "16px",
                         height: "16px",
@@ -449,15 +449,15 @@ const Core = () => {
                     {polyline.name}
                   </button>
                 </h2>
-                <div 
-                  id={`collapse-${polyline.id}`} 
+                <div
+                  id={`collapse-${polyline.id}`}
                   className={`accordion-collapse collapse ${activePolylineId === polyline.id ? 'show' : ''}`}
                 >
                   <div className="accordion-body p-0">
                     <ul className="list-group list-group-flush small">
                       {polyline.coords.map((coord, i) => (
-                        <li 
-                          key={`${polyline.id}-${i}`} 
+                        <li
+                          key={`${polyline.id}-${i}`}
                           className={`list-group-item ${selectedMarker?.polylineId === polyline.id && selectedMarker?.index === i ? 'bg-light' : ''}`}
                         >
                           <strong>

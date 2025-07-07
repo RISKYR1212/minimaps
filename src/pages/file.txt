@@ -1,41 +1,3 @@
-import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvent } from 'react-leaflet';
-
-function LocationMarker({ onClickMap }) {
-  useMapEvent('click', (e) => {
-    const { lat, lng } = e.latlng;
-    onClickMap(lat, lng);
-  });
-
-  return null;
-}
-
-function MyMap() {
-  const [position, setPosition] = useState(null);
-
-  const handleMapClick = (lat, lng) => {
-    setPosition({ lat, lng });
-    console.log('Clicked location:', lat, lng);
-  };
-
-  return (
-    <MapContainer center={[-6.2, 106.8]} zoom={13} style={{ height: '100vh', width: '100%' }}>
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="© OpenStreetMap contributors"
-      />
-      <LocationMarker onClickMap={handleMapClick} />
-      {position && (
-        <Marker position={[position.lat, position.lng]}>
-          <Popup>
-            Latitude: {position.lat} <br /> Longitude: {position.lng}
-          </Popup>
-        </Marker>
-      )}
-    </MapContainer>
-  );
-}
-
 export default MyMap;
 
 
@@ -49,5 +11,11 @@ menambahkan notification ketika ada penambahan titik
 bisa tarik summary data core by excel dan pdf per segment
 menambahkan fitur dalam maps sampai client
 bisa Merubah pin dalam maps
-
+create BOM dan BOQ agar bisa dari sisi kedua plan bisa melihat berapa total biaya yang di keluarkan
+dan juga bisa membaca alur tujuan pada maps,memakai API dari google maps
+sehabis itu tolong juga bisa create dan mengetahui untuk managemnt core nya
+melihat berapa jumlah yang di keluarkan corepembagian core 
+lanjut implementasi core jumalah core dan alur dari server ke odc itu sudah bisa melihat memakai core apa dan tube apa
+JANGAN SAMPE CAPE YA UNTUK TERUS BEFIKIR DAN TANYA.....!!!!.
+NOTE : semua harus berjalan sesuai plan di fitur masing masing saling terhubung dan plan yang sudah di terapkan...
 
