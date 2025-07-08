@@ -1,149 +1,232 @@
+import axios from "axios";
 import React, { useState, useEffect } from "react";
-import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Table, Card } from "react-bootstrap";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+import "dayjs/locale/id";
 
-const capacities = ["48","96","144","288"];
-const endpoint   = import.meta.env.VITE_GAS_ENDPOINT;        // tanpa ?mode
+dayjs.extend(duration);
+dayjs.locale("id");
 
-/* convert HH:MM => durasi */
-const durasi = (s,e)=>{
-  if(!s||!e) return "";
-  const [h1,m1]=s.split(":").map(Number), [h2,m2]=e.split(":").map(Number);
-  let diff=h2*60+m2 - (h1*60+m1); if(diff<0) diff+=1440;
-  return `${Math.floor(diff/60)} jam ${diff%60} menit`;
+const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
+
+const formatTanggal = (tanggal) => (tanggal ? dayjs(tanggal).format("DD MMMM YYYY") : "");
+const formatJam = (jam) => {
+  const d = dayjs(jam, "HH:mm");
+  return d.isValid() ? d.format("HH:mm") : jam;
+};
+const gabungTanggalJam = (tanggal, jam) => (tanggal && jam ? dayjs(`${tanggal}T${jam}`) : null);
+
+const hitungDurasi = (mulai, selesai) => {
+  if (!mulai || !selesai || !dayjs(mulai).isValid() || !dayjs(selesai).isValid()) return "";
+  const diff = selesai.diff(mulai);
+  if (diff <= 0) return "";
+  const d = dayjs.duration(diff);
+  const h = d.hours();
+  const m = d.minutes();
+  return `${h} jam ${m} menit`;
 };
 
 const empty = {
-  tanggal:"", hari:"", bulanTahun:"",
-  userStart:"", userEnd:"", ticketStart:"", ticketEnd:"",
-  durasiUser:"", durasiTicket:"",
-  problem:"", action:"", joinClosure:"", pic:"", vendor:""
+  tanggal: "",
+  hari: "",
+  bulan_tahun: "",
+  start_user: "",
+  end_user: "",
+  hasil_durasi_user: "",
+  start_ticket: "",
+  end_ticket: "",
+  hasil_durasi_ticket: "",
+  problem: "",
+  action: "",
+  tambah_barang: "",
+  pic: "",
+  vendor: "",
 };
 
- function Osp(){
-  const [form,setForm]=useState(empty);
-  const [rows,setRows]=useState([]);
-  const [loading,setLoading]=useState(false);
-  const [error,setError]=useState("");
+function Osp() {
+  const [form, setForm] = useState(empty);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  /* ▼ ambil histori dari Google Sheet sekali saja */
-  useEffect(()=>{
-    fetch(`${endpoint}?mode=read`)
-      .then(r=>r.json()).then(j=>setRows(j.records||[]))
-      .catch(console.error);
-  },[]);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  /* hitung durasi & tanggal helper */
-  const update = ({target:{name,value}})=>{
-    setForm(p=>{
-      const n={...p,[name]:value};
-      if(name==="tanggal"){
-        const d=new Date(value);
-        n.hari=d.toLocaleDateString("id-ID",{weekday:"long"});
-        n.bulanTahun=d.toLocaleDateString("id-ID",{month:"long",year:"numeric"});
-      }
-      n.durasiUser  = durasi(n.userStart ,n.userEnd);
-      n.durasiTicket= durasi(n.ticketStart,n.ticketEnd);
-      return n;
-    });
-  };
-
-  /* kirim baris ke Sheet */
-  const send = async data=>{
-    const body=new URLSearchParams(data).toString();
-    const r=await fetch(endpoint,{method:"POST",
-      headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
-    const j=await r.json(); if(!j.ok) throw new Error("Apps Script error");
-  };
-
-  const submit=async e=>{
-    e.preventDefault(); setLoading(true); setError("");
-    try{
-      await send(form);           // kirim ke sheet
-      setRows(r=>[...r,form]);    // tampil di tabel
-      setForm(empty);
-    }catch(err){setError(err.message);}finally{setLoading(false);}
-  };
-
-  const resetLocal=()=>{
-    if(confirm("Hapus tabel di layar (tidak menghapus Google Sheet)?")){
-      setRows([]);
+  const fetchData = async () => {
+    try {
+      const { data } = await axios.get(`${endpoint}?mode=read`);
+      setRows(data.records || []);
+    } catch (err) {
+      console.error(err);
+      setError("Gagal memuat data dari Google Sheet");
     }
   };
 
-  /* ---------------- UI ---------------- */
-  return(
+  const update = ({ target: { name, value } }) => {
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+
+      if (name === "tanggal") {
+        const d = new Date(value);
+        next.hari = d.toLocaleDateString("id-ID", { weekday: "long" });
+        next.bulan_tahun = d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+      }
+
+      const tanggal = next.tanggal;
+      const mulaiUser = gabungTanggalJam(tanggal, next.start_user);
+      const selesaiUser = gabungTanggalJam(tanggal, next.end_user);
+      const mulaiTicket = gabungTanggalJam(tanggal, next.start_ticket);
+      const selesaiTicket = gabungTanggalJam(tanggal, next.end_ticket);
+
+      next.hasil_durasi_user = hitungDurasi(mulaiUser, selesaiUser);
+      next.hasil_durasi_ticket = hitungDurasi(mulaiTicket, selesaiTicket);
+
+      return next;
+    });
+  };
+
+  const send = async (data) => {
+    const body = new URLSearchParams(data).toString();
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.message || "Apps Script error");
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      await send(form);
+      setForm(empty);
+      fetchData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
     <Container className="py-4">
-      <h4 className="mb-3">Gangguan / Durasi OSP</h4>
+      <h4 className="mb-3">Gangguan / Durasi OSP</h4>
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {/* -------- FORM -------- */}
-      <Form onSubmit={submit} className="border p-3 rounded mb-4">
-        {/* Tanggal */}
-        <Row className="g-2 mb-2">
-          <Col md={3}><Form.Control type="date" name="tanggal" value={form.tanggal} onChange={update} required/></Col>
-          <Col md={2}><Form.Control type="text" value={form.hari} placeholder="Hari" readOnly/></Col>
-          <Col md={3}><Form.Control type="text" value={form.bulanTahun} placeholder="Bulan/Tahun" readOnly/></Col>
-        </Row>
-        {/* User */}
-        <h6>Jam Action User</h6>
-        <Row className="g-2 mb-2">
-          <Col md={2}><Form.Control type="time" name="userStart" value={form.userStart} onChange={update}/></Col>
-          <Col md={2}><Form.Control type="time" name="userEnd"   value={form.userEnd}   onChange={update}/></Col>
-          <Col md={3}><Form.Control value={form.durasiUser} readOnly placeholder="Durasi User"/></Col>
-        </Row>
-        {/* Ticket */}
-        <h6>Jam Ticket Turun</h6>
-        <Row className="g-2 mb-2">
-          <Col md={2}><Form.Control type="time" name="ticketStart" value={form.ticketStart} onChange={update}/></Col>
-          <Col md={2}><Form.Control type="time" name="ticketEnd"   value={form.ticketEnd}   onChange={update}/></Col>
-          <Col md={3}><Form.Control value={form.durasiTicket} readOnly placeholder="Durasi Ticket"/></Col>
-        </Row>
-        {/* Problem & Action */}
-        <Row className="g-2 mb-2">
-          <Col md={4}><Form.Control name="problem" placeholder="Problem" value={form.problem} onChange={update}/></Col>
-          <Col md={4}><Form.Control name="action"  placeholder="Action"  value={form.action}  onChange={update}/></Col>
-        </Row>
-        {/* Join Closure */}
-        <Row className="g-2 mb-2">
-          <Col md={4}>
-            <Form.Control name="joinClosure" list="listJC" placeholder="Join Closure (opsional)" value={form.joinClosure} onChange={update}/>
-            <datalist id="listJC">{capacities.map(c=><option key={c} value={c}/>)}</datalist>
-          </Col>
-        </Row>
-        {/* PIC / Vendor + Tombol */}
-        <Row className="g-2">
-          <Col md={3}><Form.Control name="pic"    placeholder="PIC"    value={form.pic}    onChange={update}/></Col>
-          <Col md={3}><Form.Control name="vendor" placeholder="Vendor" value={form.vendor} onChange={update}/></Col>
-          <Col md={2} className="d-flex flex-column">
-            <Button type="submit" disabled={loading} className="w-100 mb-2">
-              {loading?"Mengirim…":"Tambah"}
-            </Button>
-            <Button variant="warning" className="w-100" onClick={resetLocal}>
-              Reset Tabel
-            </Button>
-          </Col>
-        </Row>
-      </Form>
+      <Card className="p-4 shadow-sm mb-4">
+        <Form onSubmit={submit}>
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Label>Tanggal</Form.Label>
+              <Form.Control type="date" name="tanggal" value={form.tanggal} onChange={update} required />
+            </Col>
+            <Col md={2}>
+              <Form.Label>Hari</Form.Label>
+              <Form.Control type="text" value={form.hari} readOnly />
+            </Col>
+            <Col md={3}>
+              <Form.Label>Bulan/Tahun</Form.Label>
+              <Form.Control type="text" value={form.bulan_tahun} readOnly />
+            </Col>
+          </Row>
 
-      {/* -------- TABEL -------- */}
+          <Row className="mb-3">
+            <Col md={2}>
+              <Form.Label>User Start</Form.Label>
+              <Form.Control type="time" name="start_user" value={form.start_user} onChange={update} />
+            </Col>
+            <Col md={2}>
+              <Form.Label>User End</Form.Label>
+              <Form.Control type="time" name="end_user" value={form.end_user} onChange={update} />
+            </Col>
+            <Col md={3}>
+              <Form.Label>Durasi User</Form.Label>
+              <Form.Control value={form.hasil_durasi_user} readOnly />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={2}>
+              <Form.Label>Ticket Start</Form.Label>
+              <Form.Control type="time" name="start_ticket" value={form.start_ticket} onChange={update} />
+            </Col>
+            <Col md={2}>
+              <Form.Label>Ticket End</Form.Label>
+              <Form.Control type="time" name="end_ticket" value={form.end_ticket} onChange={update} />
+            </Col>
+            <Col md={3}>
+              <Form.Label>Durasi Ticket</Form.Label>
+              <Form.Control value={form.hasil_durasi_ticket} readOnly />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Label>Problem</Form.Label>
+              <Form.Control name="problem" value={form.problem} onChange={update} />
+            </Col>
+            <Col md={4}>
+              <Form.Label>Action</Form.Label>
+              <Form.Control name="action" value={form.action} onChange={update} />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Label>Tambah Barang</Form.Label>
+              <Form.Control name="tambah_barang" value={form.tambah_barang} onChange={update} />
+            </Col>
+            <Col md={3}>
+              <Form.Label>PIC</Form.Label>
+              <Form.Control name="pic" value={form.pic} onChange={update} />
+            </Col>
+            <Col md={3}>
+              <Form.Label>Vendor</Form.Label>
+              <Form.Control name="vendor" value={form.vendor} onChange={update} />
+            </Col>
+          </Row>
+
+          <Row>
+            <Col md={2}>
+              <Button type="submit" disabled={loading} className="w-100">
+                {loading ? "Mengirim…" : "Tambah"}
+              </Button>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
+
       <Table striped bordered hover size="sm">
         <thead>
-          <tr>{[
-            "No","Tanggal","Hari","Bulan/Tahun",
-            "User Start","User End","Durasi User",
-            "Ticket Start","Ticket End","Durasi Ticket",
-            "problem","action","join closure","pic","Vendor"
-          ].map(h=><th key={h}>{h}</th>)}</tr>
+          <tr>
+            {["No", "Tanggal", "Hari", "Bulan/Tahun", "User Start", "User End", "Durasi User", "Ticket Start", "Ticket End", "Durasi Ticket", "Problem", "Action", "Tambah Barang", "PIC", "Vendor"].map((h) => (
+              <th key={h}>{h}</th>
+            ))}
+          </tr>
         </thead>
         <tbody>
-          {rows.map((r,i)=>(
-            <tr key={i}>
-              <td>{i+1}</td>
-              <td>{r.tanggal}</td><td>{r.hari}</td><td>{r.bulanTahun}</td>
-              <td>{r.userStart}</td><td>{r.userEnd}</td><td>{r.durasiUser}</td>
-              <td>{r.ticketStart}</td><td>{r.ticketEnd}</td><td>{r.durasiTicket}</td>
-              <td>{r.problem}</td><td>{r.action}</td>
-              <td>{r.joinClosure}</td><td>{r.pic}</td><td>{r.vendor}</td>
+          {rows.map((r, i) => (
+            <tr key={`${r.tanggal}-${i}`}>
+              <td>{i + 1}</td>
+              <td>{formatTanggal(r.tanggal)}</td>
+              <td>{r.hari}</td>
+              <td>{r.bulan_tahun}</td>
+              <td>{formatJam(r.start_user)}</td>
+              <td>{formatJam(r.end_user)}</td>
+              <td>{r.hasil_durasi_user}</td>
+              <td>{formatJam(r.start_ticket)}</td>
+              <td>{formatJam(r.end_ticket)}</td>
+              <td>{r.hasil_durasi_ticket}</td>
+              <td>{r.problem}</td>
+              <td>{r.action}</td>
+              <td>{r.tambah_barang}</td>
+              <td>{r.pic}</td>
+              <td>{r.vendor}</td>
             </tr>
           ))}
         </tbody>

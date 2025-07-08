@@ -1,31 +1,71 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   return (
-    <div>
-        <nav className="navbar navbar-expand-lg bg-body-tertiary">
-  <div className="container-fluid">
-  <a href="/" className="logo d-flex align-items-center">
-                <img src="https://jlm.net.id/new-logo-jlm.png" alt="Logo JLM"/>
-            </a>
-    <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-      <span className="navbar-toggler-icon"></span>
-    </button>
-    <div className="collapse navbar-collapse" id="navbarNavAltMarkup">
-      <div className="navbar-nav">
-        <Link className="nav-link active" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} aria-current="page" to="/">Home</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/maps">Maps</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/fasfield">Fastfield</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/core">AlokasiCore</Link>
-        <Link className="nav-link" style={{fontFamily: 'sans-serif', fontSize: 30, fontWeight: 'bold'}} to="/osp">OSP</Link>
-        {/* <Link className="nav-link disabled" aria-disabled="true">D</Link> */}
-      </div>
-    </div>
-  </div>
-</nav>
-    </div>
-  )
-}
+    <nav className="navbar navbar-expand-lg bg-body-tertiary shadow-sm">
+      <div className="container-fluid">
+        {/* Logo */}
+        <a href="/" className="navbar-brand d-flex align-items-center">
+          <img
+            src="https://jlm.net.id/new-logo-jlm.png"
+            alt="Logo JLM"
+            style={{ height: '40px', marginRight: '10px' }}
+          />
+        </a>
 
-export default Navbar
+        {/* Toggler for mobile */}
+        <button
+          className="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNavGrid"
+          aria-controls="navbarNavGrid"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span className="navbar-toggler-icon" />
+        </button>
+
+        {/* Navbar Items */}
+        <div className="collapse navbar-collapse" id="navbarNavGrid">
+          <div className="container">
+            <div className="row g-2">
+              {/* Each nav link as a column (auto width on desktop, full width on mobile) */}
+              <div className="col-6 col-md-auto">
+                <Link
+                  className="nav-link fw-bold fs-5"
+                  to="/"
+                >
+                  Home
+                </Link>
+              </div>
+              <div className="col-6 col-md-auto">
+                <Link className="nav-link fw-bold fs-5" to="/maps">
+                  Maps
+                </Link>
+              </div>
+              <div className="col-6 col-md-auto">
+                <Link className="nav-link fw-bold fs-5" to="/fasfield">
+                  Fastfield
+                </Link>
+              </div>
+              <div className="col-6 col-md-auto">
+                <Link className="nav-link fw-bold fs-5" to="/core">
+                  AlokasiCore
+                </Link>
+              </div>
+              <div className="col-6 col-md-auto">
+                <Link className="nav-link fw-bold fs-5" to="/osp">
+                  OSP
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
