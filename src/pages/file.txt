@@ -19,3 +19,8 @@ lanjut implementasi core jumalah core dan alur dari server ke odc itu sudah bisa
 JANGAN SAMPE CAPE YA UNTUK TERUS BEFIKIR DAN TANYA.....!!!!.
 NOTE : semua harus berjalan sesuai plan di fitur masing masing saling terhubung dan plan yang sudah di terapkan...
 
+
+
+form 3 + nambah foto+GPS
+1 start ticket - start user
+1 form foto + gps
