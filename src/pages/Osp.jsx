@@ -2,30 +2,14 @@ import axios from "axios";
 import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Form, Button, Table, Card } from "react-bootstrap";
 import dayjs from "dayjs";
-import duration from "dayjs/plugin/duration";
 import "dayjs/locale/id";
 
-dayjs.extend(duration);
 dayjs.locale("id");
 
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
 const formatTanggal = (tanggal) => (tanggal ? dayjs(tanggal).format("DD MMMM YYYY") : "");
-const formatJam = (jam) => {
-  const d = dayjs(jam, "HH:mm");
-  return d.isValid() ? d.format("HH:mm") : jam;
-};
-const gabungTanggalJam = (tanggal, jam) => (tanggal && jam ? dayjs(`${tanggal}T${jam}`) : null);
-
-const hitungDurasi = (mulai, selesai) => {
-  if (!mulai || !selesai || !dayjs(mulai).isValid() || !dayjs(selesai).isValid()) return "";
-  const diff = selesai.diff(mulai);
-  if (diff <= 0) return "";
-  const d = dayjs.duration(diff);
-  const h = d.hours();
-  const m = d.minutes();
-  return `${h} jam ${m} menit`;
-};
+const formatJam = (jam) => jam;
 
 const empty = {
   tanggal: "",
@@ -33,10 +17,8 @@ const empty = {
   bulan_tahun: "",
   start_user: "",
   end_user: "",
-  hasil_durasi_user: "",
   start_ticket: "",
   end_ticket: "",
-  hasil_durasi_ticket: "",
   problem: "",
   action: "",
   tambah_barang: "",
@@ -59,7 +41,6 @@ function Osp() {
       const { data } = await axios.get(`${endpoint}?mode=read`);
       setRows(data.records || []);
     } catch (err) {
-      console.error(err);
       setError("Gagal memuat data dari Google Sheet");
     }
   };
@@ -67,22 +48,11 @@ function Osp() {
   const update = ({ target: { name, value } }) => {
     setForm((prev) => {
       const next = { ...prev, [name]: value };
-
       if (name === "tanggal") {
         const d = new Date(value);
         next.hari = d.toLocaleDateString("id-ID", { weekday: "long" });
         next.bulan_tahun = d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
       }
-
-      const tanggal = next.tanggal;
-      const mulaiUser = gabungTanggalJam(tanggal, next.start_user);
-      const selesaiUser = gabungTanggalJam(tanggal, next.end_user);
-      const mulaiTicket = gabungTanggalJam(tanggal, next.start_ticket);
-      const selesaiTicket = gabungTanggalJam(tanggal, next.end_ticket);
-
-      next.hasil_durasi_user = hitungDurasi(mulaiUser, selesaiUser);
-      next.hasil_durasi_ticket = hitungDurasi(mulaiTicket, selesaiTicket);
-
       return next;
     });
   };
@@ -144,10 +114,6 @@ function Osp() {
               <Form.Label>User End</Form.Label>
               <Form.Control type="time" name="end_user" value={form.end_user} onChange={update} />
             </Col>
-            <Col md={3}>
-              <Form.Label>Durasi User</Form.Label>
-              <Form.Control value={form.hasil_durasi_user} readOnly />
-            </Col>
           </Row>
 
           <Row className="mb-3">
@@ -158,10 +124,6 @@ function Osp() {
             <Col md={2}>
               <Form.Label>Ticket End</Form.Label>
               <Form.Control type="time" name="end_ticket" value={form.end_ticket} onChange={update} />
-            </Col>
-            <Col md={3}>
-              <Form.Label>Durasi Ticket</Form.Label>
-              <Form.Control value={form.hasil_durasi_ticket} readOnly />
             </Col>
           </Row>
 
@@ -204,9 +166,12 @@ function Osp() {
       <Table striped bordered hover size="sm">
         <thead>
           <tr>
-            {["No", "Tanggal", "Hari", "Bulan/Tahun", "User Start", "User End", "Durasi User", "Ticket Start", "Ticket End", "Durasi Ticket", "Problem", "Action", "Tambah Barang", "PIC", "Vendor"].map((h) => (
-              <th key={h}>{h}</th>
-            ))}
+            {[
+              "No", "Tanggal", "Hari", "Bulan/Tahun",
+              "User Start", "User End", "Durasi User",
+              "Ticket Start", "Ticket End", "Durasi Ticket",
+              "Problem", "Action", "Tambah Barang", "PIC", "Vendor"
+            ].map((h) => <th key={h}>{h}</th>)}
           </tr>
         </thead>
         <tbody>
