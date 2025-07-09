@@ -254,7 +254,7 @@ const Fasfield = () => {
           />
         </div>
 
-        <button type="submit" style={styles.submitButton}>Simpan ke Google Sheet</button>
+        <button type="submit" style={styles.submitButton}>Simpan PDF</button>
       </form>
     </div>
   );

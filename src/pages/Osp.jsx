@@ -2,7 +2,13 @@
 import axios from "axios";
 import React, { useState, useEffect } from "react";
 import {
-  Container, Row, Col, Form, Button, Table, Card,
+  Container,
+  Row,
+  Col,
+  Form,
+  Button,
+  Table,
+  Card,
 } from "react-bootstrap";
 import { X } from "react-bootstrap-icons";
 import dayjs from "dayjs";
@@ -13,6 +19,7 @@ dayjs.extend(duration);
 dayjs.locale("id");
 
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
+const LOCAL_KEY = "osp_form_cache"; // <- simpan progress form
 
 /* ---------- util ---------- */
 const formatTanggal = (t) => (t ? dayjs(t).format("DD MMMM YYYY") : "");
@@ -20,7 +27,8 @@ const formatJam = (j) => {
   const d = dayjs(j, "HH:mm");
   return d.isValid() ? d.format("HH:mm") : j;
 };
-const gabungTanggalJam = (tgl, jam) => (tgl && jam ? dayjs(`${tgl}T${jam}`) : null);
+const gabungTanggalJam = (tgl, jam) =>
+  tgl && jam ? dayjs(`${tgl}T${jam}`) : null;
 const hitungDurasi = (mulai, selesai) => {
   if (!mulai || !selesai || !mulai.isValid() || !selesai.isValid()) return "";
   const diff = selesai.diff(mulai);
@@ -31,23 +39,44 @@ const hitungDurasi = (mulai, selesai) => {
 
 /* ---------- state awal ---------- */
 const empty = {
-  tanggal: "", hari: "", bulan_tahun: "",
-  start_user: "", end_user: "", hasil_durasi_user: "",
-  start_ticket: "", end_ticket: "", hasil_durasi_ticket: "",
+  tanggal: "",
+  hari: "",
+  bulan_tahun: "",
+  start_user: "",
+  end_user: "",
+  hasil_durasi_user: "",
+  start_ticket: "",
+  end_ticket: "",
+  hasil_durasi_ticket: "",
   selisih_start: "",
-  problem: "", action: "", tambah_barang: "",
-  pic: "", vendor: "",
-  latlong: "", latlong2: "",
+  problem: "",
+  action: "",
+  tambah_barang: "",
+  pic: "",
+  vendor: "",
+  latlong: "",
+  latlong2: "",
 };
 
 /* field yg dikirim ke Apps Script */
 const FIELDS_TO_SEND = [
-  "tanggal", "hari", "bulan_tahun",
-  "start_user", "end_user", "hasil_durasi_user",
-  "start_ticket", "end_ticket", "hasil_durasi_ticket",
+  "tanggal",
+  "hari",
+  "bulan_tahun",
+  "start_user",
+  "end_user",
+  "hasil_durasi_user",
+  "start_ticket",
+  "end_ticket",
+  "hasil_durasi_ticket",
   "selisih_start",
-  "problem", "action", "tambah_barang", "pic", "vendor",
-  "latlong", "latlong2",
+  "problem",
+  "action",
+  "tambah_barang",
+  "pic",
+  "vendor",
+  "latlong",
+  "latlong2",
 ];
 
 function Osp() {
@@ -55,9 +84,23 @@ function Osp() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [useTicket, setUseTicket] = useState(false); // <- toggle tampil Ticket
 
-  /* ---------- load data pertama ---------- */
-  useEffect(() => { fetchData(); }, []);
+  /* ---------- load data pertama & cache ---------- */
+  useEffect(() => {
+    fetchData();
+    const saved = localStorage.getItem(LOCAL_KEY);
+    if (saved) {
+      try {
+        setForm((prev) => ({ ...prev, ...JSON.parse(saved) }));
+      } catch {/* abaikan */}
+    }
+  }, []);
+
+  /* autosave */
+  useEffect(() => {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(form));
+  }, [form]);
 
   const fetchData = async () => {
     try {
@@ -77,18 +120,22 @@ function Osp() {
       if (name === "tanggal") {
         const d = new Date(value);
         next.hari = d.toLocaleDateString("id-ID", { weekday: "long" });
-        next.bulan_tahun = d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+        next.bulan_tahun = d.toLocaleDateString("id-ID", {
+          month: "long",
+          year: "numeric",
+        });
       }
 
+      // kalkulasi durasi & selisih
       const tgl = next.tanggal;
       const mUser = gabungTanggalJam(tgl, next.start_user);
       const sUser = gabungTanggalJam(tgl, next.end_user);
-      const mTic  = gabungTanggalJam(tgl, next.start_ticket);
-      const sTic  = gabungTanggalJam(tgl, next.end_ticket);
+      const mTic = gabungTanggalJam(tgl, next.start_ticket);
+      const sTic = gabungTanggalJam(tgl, next.end_ticket);
 
-      next.hasil_durasi_user   = hitungDurasi(mUser, sUser);
+      next.hasil_durasi_user = hitungDurasi(mUser, sUser);
       next.hasil_durasi_ticket = hitungDurasi(mTic, sTic);
-      next.selisih_start       = hitungDurasi(mUser, mTic);
+      next.selisih_start = hitungDurasi(mUser, mTic);
 
       return next;
     });
@@ -98,8 +145,12 @@ function Osp() {
   const ambilLatLong = (field) => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        ({ coords }) => setForm((prev) => ({ ...prev, [field]: `${coords.latitude},${coords.longitude}` })),
-        () => alert("Izin lokasi ditolak"),
+        ({ coords }) =>
+          setForm((prev) => ({
+            ...prev,
+            [field]: `${coords.latitude},${coords.longitude}`,
+          })),
+        () => alert("Izin lokasi ditolak")
       );
     } else alert("Geolocation tidak didukung");
   };
@@ -107,8 +158,9 @@ function Osp() {
   /* ---------- kirim ke GAS ---------- */
   const send = async (data) => {
     const body = new URLSearchParams(
-      FIELDS_TO_SEND.map((k) => [k, data[k] ?? ""]),
+      FIELDS_TO_SEND.map((k) => [k, data[k] ?? ""])
     ).toString();
+
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -120,10 +172,26 @@ function Osp() {
 
   const submit = async (e) => {
     e.preventDefault();
-    setLoading(true); setError("");
+
+    // jika ticket disembunyikan, kosongkan field agar tidak rancu
+    const dataToSend = {
+      ...form,
+      ...(useTicket
+        ? {}
+        : {
+            start_ticket: "",
+            end_ticket: "",
+            hasil_durasi_ticket: "",
+            selisih_start: "",
+          }),
+    };
+
+    setLoading(true);
+    setError("");
     try {
-      await send(form);
+      await send(dataToSend);
       setForm(empty);
+      localStorage.removeItem(LOCAL_KEY);
       fetchData();
     } catch (err) {
       setError(err.message);
@@ -132,7 +200,7 @@ function Osp() {
     }
   };
 
-  /* ---------- hapus lokal ---------- */
+  /* ---------- hapus lokal saja ---------- */
   const deleteLocalRow = (index) => {
     if (!window.confirm("Hapus baris ini dari tampilan?")) return;
     setRows((prev) => prev.filter((_, i) => i !== index));
@@ -151,7 +219,13 @@ function Osp() {
           <Row className="mb-3">
             <Col md={6}>
               <Form.Label>Tanggal</Form.Label>
-              <Form.Control type="date" name="tanggal" value={form.tanggal} onChange={update} required />
+              <Form.Control
+                type="date"
+                name="tanggal"
+                value={form.tanggal}
+                onChange={update}
+                required
+              />
             </Col>
             <Col md={6}>
               <Form.Label>Hari</Form.Label>
@@ -167,11 +241,21 @@ function Osp() {
           <Row className="mb-3">
             <Col md={6}>
               <Form.Label>User Start</Form.Label>
-              <Form.Control type="time" name="start_user" value={form.start_user} onChange={update} />
+              <Form.Control
+                type="time"
+                name="start_user"
+                value={form.start_user}
+                onChange={update}
+              />
             </Col>
             <Col md={6}>
               <Form.Label>User End</Form.Label>
-              <Form.Control type="time" name="end_user" value={form.end_user} onChange={update} />
+              <Form.Control
+                type="time"
+                name="end_user"
+                value={form.end_user}
+                onChange={update}
+              />
             </Col>
             <Col md={6} className="mt-3">
               <Form.Label>Durasi User</Form.Label>
@@ -179,29 +263,53 @@ function Osp() {
             </Col>
           </Row>
 
-          {/* Ticket time */}
+          {/* Toggle Ticket */}
           <Row className="mb-3">
-            <Col md={6}>
-              <Form.Label>Ticket Start</Form.Label>
-              <Form.Control type="time" name="start_ticket" value={form.start_ticket} onChange={update} />
-            </Col>
-            <Col md={6}>
-              <Form.Label>Ticket End</Form.Label>
-              <Form.Control type="time" name="end_ticket" value={form.end_ticket} onChange={update} />
-            </Col>
-            <Col md={6} className="mt-3">
-              <Form.Label>Durasi Ticket</Form.Label>
-              <Form.Control value={form.hasil_durasi_ticket} readOnly />
+            <Col>
+              <Form.Check
+                type="switch"
+                id="toggle-ticket"
+                label="Gunakan waktu Ticket"
+                checked={useTicket}
+                onChange={(e) => setUseTicket(e.target.checked)}
+              />
             </Col>
           </Row>
 
-          {/* Selisih start */}
-          <Row className="mb-3">
-            <Col md={6}>
-              <Form.Label>Selisih Start (start_Ticket - start_user)</Form.Label>
-              <Form.Control value={form.selisih_start} readOnly />
-            </Col>
-          </Row>
+          {/* Ticket time (tampil kalau useTicket === true) */}
+          {useTicket && (
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Label>Ticket Start</Form.Label>
+                <Form.Control
+                  type="time"
+                  name="start_ticket"
+                  value={form.start_ticket}
+                  onChange={update}
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Label>Ticket End</Form.Label>
+                <Form.Control
+                  type="time"
+                  name="end_ticket"
+                  value={form.end_ticket}
+                  onChange={update}
+                />
+              </Col>
+              <Col md={6} className="mt-3">
+                <Form.Label>Durasi Ticket</Form.Label>
+                <Form.Control value={form.hasil_durasi_ticket} readOnly />
+              </Col>
+
+              <Col md={6} className="mt-3">
+                <Form.Label>
+                  Selisih Start (start_Ticket - start_user)
+                </Form.Label>
+                <Form.Control value={form.selisih_start} readOnly />
+              </Col>
+            </Row>
+          )}
 
           {/* Problem & Action */}
           <Row className="mb-3">
@@ -219,7 +327,11 @@ function Osp() {
           <Row className="mb-3">
             <Col md={6}>
               <Form.Label>Tambah Barang</Form.Label>
-              <Form.Control name="tambah_barang" value={form.tambah_barang} onChange={update} />
+              <Form.Control
+                name="tambah_barang"
+                value={form.tambah_barang}
+                onChange={update}
+              />
             </Col>
             <Col md={6}>
               <Form.Label>PIC</Form.Label>
@@ -236,7 +348,8 @@ function Osp() {
             <Col md={6}>
               <Form.Label>Upload Foto 1</Form.Label>
               <Form.Control
-                type="file" accept="image/*"
+                type="file"
+                accept="image/*"
                 onChange={(e) => {
                   if (!e.target.files.length) return;
                   ambilLatLong("latlong");
@@ -254,7 +367,8 @@ function Osp() {
             <Col md={6}>
               <Form.Label>Upload Foto 2</Form.Label>
               <Form.Control
-                type="file" accept="image/*"
+                type="file"
+                accept="image/*"
                 onChange={(e) => {
                   if (!e.target.files.length) return;
                   ambilLatLong("latlong2");
@@ -282,10 +396,22 @@ function Osp() {
         <thead>
           <tr>
             {[
-              "No", "Tanggal", "User Start", "User End", "Durasi User",
-              "Ticket Start", "Ticket End", "Durasi Ticket",
-              "Problem", "Action", "PIC", "Vendor", "Aksi",
-            ].map((h) => <th key={h}>{h}</th>)}
+              "No",
+              "Tanggal",
+              "User Start",
+              "User End",
+              "Durasi User",
+              "Ticket Start",
+              "Ticket End",
+              "Durasi Ticket",
+              "Problem",
+              "Action",
+              "PIC",
+              "Vendor",
+              "Aksi",
+            ].map((h) => (
+              <th key={h}>{h}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
