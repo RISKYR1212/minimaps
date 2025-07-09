@@ -339,14 +339,14 @@ function Osp() {
             </Col>
             <Col md={6} className="mt-3">
               <Form.Label>Nomor Ticket</Form.Label>
-              <Form.Control name="Nomor Ticket" value={form.vendor} onChange={update} />
+              <Form.Control name="Nomor Ticket" value={form.Nomor_Ticket} onChange={update} />
             </Col>
           </Row>
 
           {/* Upload Foto 1 */}
           <Row className="mb-3">
             <Col md={6}>
-              <Form.Label>Upload Foto 1</Form.Label>
+              <Form.Label>Upload Foto 1</Form.Label>
               <Form.Control
                 type="file"
                 accept="image/*"
@@ -357,7 +357,7 @@ function Osp() {
               />
             </Col>
             <Col md={6}>
-              <Form.Label>Lat,Long 1</Form.Label>
+              <Form.Label>Lat,Long 1</Form.Label>
               <Form.Control value={form.latlong} readOnly />
             </Col>
           </Row>
@@ -365,7 +365,7 @@ function Osp() {
           {/* Upload Foto 2 */}
           <Row className="mb-3">
             <Col md={6}>
-              <Form.Label>Upload Foto 2</Form.Label>
+              <Form.Label>Upload Foto 2</Form.Label>
               <Form.Control
                 type="file"
                 accept="image/*"
@@ -376,7 +376,7 @@ function Osp() {
               />
             </Col>
             <Col md={6}>
-              <Form.Label>Lat,Long 2</Form.Label>
+              <Form.Label>Lat,Long 2</Form.Label>
               <Form.Control value={form.latlong2} readOnly />
             </Col>
           </Row>
