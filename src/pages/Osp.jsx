@@ -338,8 +338,8 @@ function Osp() {
               <Form.Control name="pic" value={form.pic} onChange={update} />
             </Col>
             <Col md={6} className="mt-3">
-              <Form.Label>Vendor</Form.Label>
-              <Form.Control name="vendor" value={form.vendor} onChange={update} />
+              <Form.Label>Nomor Ticket</Form.Label>
+              <Form.Control name="Nomor Ticket" value={form.vendor} onChange={update} />
             </Col>
           </Row>
 
