@@ -112,7 +112,7 @@ function Fasfield() {
     setForm(p => p.temuanList.length === 1 ? p : { ...p, temuanList: p.temuanList.filter((_, idx) => idx !== i) });
 
   const header = (doc, logoB64) => {
-    doc.addImage(logoB64, "JPEG", 15, 15, 25, 15);
+    doc.addImage(imgData, 'JPEG', x, y, width, height, undefined, 'FAST', 90);
     doc.setFontSize(16).setFont(undefined, "bold")
        .text(PDF_TITLE, 105, 25, { align: "center" });
     return 35;
