@@ -15,11 +15,7 @@ const ambilGPS = () => new Promise((ok, no) => {
   navigator.geolocation.getCurrentPosition(
     ({ coords }) => ok(`${coords.latitude},${coords.longitude}`),
     (err) => no(err.message),
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 });
 
@@ -112,10 +108,10 @@ function Fasfield() {
     setForm(p => p.temuanList.length === 1 ? p : { ...p, temuanList: p.temuanList.filter((_, idx) => idx !== i) });
 
   const header = (doc, logoB64) => {
-    doc.addImage(imgData, 'JPEG', x, y, width, height, undefined, 'FAST', 90);
+    doc.addImage(logoB64, "JPEG", 20, 10, 30, 15);
     doc.setFontSize(16).setFont(undefined, "bold")
-       .text(PDF_TITLE, 105, 25, { align: "center" });
-    return 35;
+      .text(PDF_TITLE, 105, 20, { align: "center" });
+    return 30;
   };
 
   const downloadPDF = async () => {
@@ -146,9 +142,11 @@ function Fasfield() {
       if (t.foto) {
         const img64 = await fileToBase64(t.foto);
         if (y > 200) { doc.addPage(); y = header(doc, logoB64); }
-        doc.addImage(img64, "JPEG", 70, y, 60, 40); y += 45;
+        const imgWidth = 70;
+        const imgHeight = 50;
+        const centerX = (210 - imgWidth) / 2;
+        doc.addImage(img64, "JPEG", centerX, y, imgWidth, imgHeight); y += imgHeight + 8;
       }
-      y += 4;
     }
 
     if (form.keterangan) {
@@ -161,60 +159,47 @@ function Fasfield() {
     doc.save(`${safeName}_${form.tanggal || Date.now()}.pdf`);
   };
 
-  const css = {
-    g: { marginBottom: 12 },
-    lbl: { fontWeight: "bold" },
-    in: { width: "100%", padding: 8 },
-    ta: { width: "100%", padding: 8, minHeight: 60 },
-    sel: { width: "100%", padding: 8 },
-    btn: {
-      padding: "8px 14px", marginRight: 8, marginTop: 6,
-      color: "#fff", background: "#4CAF50", border: "none", cursor: "pointer"
-    },
-    box: { border: "1px solid #ccc", padding: 10, borderRadius: 4, marginBottom: 14 }
-  };
-
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: 20, textAlign: "center" }}>
       <h2>REPORT PATROLI</h2>
       <form>
-        {["Tanggal", "Wilayah", "Area"].map((label, i) => (
-          <div key={i} style={css.g}>
-            <label style={css.lbl}>{label}</label>
+        {[["Tanggal", "date"], ["Wilayah", "text"], ["Area", "text"]].map(([label, type], i) => (
+          <div key={i} style={{ marginBottom: 12 }}>
+            <label style={{ fontWeight: "bold" }}>{label}</label>
             <input
-              type={label === "Tanggal" ? "date" : "text"}
+              type={type}
               name={label.toLowerCase()}
               value={form[label.toLowerCase()]}
               onChange={rootChange}
-              style={css.in}
+              style={{ width: "100%", padding: 8 }}
               required={label !== "Area"}
             />
           </div>
         ))}
 
-        <div style={css.g}>
-          <label style={css.lbl}>Hari</label>
-          <input value={form.hari} readOnly style={css.in} />
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontWeight: "bold" }}>Hari</label>
+          <input value={form.hari} readOnly style={{ width: "100%", padding: 8 }} />
         </div>
 
-        <div style={css.g}>
-          <label style={css.lbl}>Nama File PDF</label>
-          <input type="text" value={filename} onChange={e => setFilename(e.target.value)} style={css.in} />
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontWeight: "bold" }}>Nama File PDF</label>
+          <input type="text" value={filename} onChange={e => setFilename(e.target.value)} style={{ width: "100%", padding: 8 }} />
         </div>
 
         {form.temuanList.map((t, i) => (
-          <div key={i} style={css.box}>
+          <div key={i} style={{ border: "1px solid #ccc", padding: 10, borderRadius: 4, marginBottom: 14 }}>
             <h4>Temuan #{i + 1}</h4>
             {["deskripsi", "tindakan"].map(field => (
-              <div key={field} style={css.g}>
-                <label style={css.lbl}>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
-                <textarea value={t[field]} onChange={e => updateTemuan(i, field, e.target.value)} style={css.ta} required />
+              <div key={field} style={{ marginBottom: 12 }}>
+                <label style={{ fontWeight: "bold" }}>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                <textarea value={t[field]} onChange={e => updateTemuan(i, field, e.target.value)} style={{ width: "100%", padding: 8, minHeight: 60 }} required />
               </div>
             ))}
 
-            <div style={css.g}>
-              <label style={css.lbl}>Hasil</label>
-              <select value={t.hasil} onChange={e => updateTemuan(i, "hasil", e.target.value)} style={css.sel} required>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontWeight: "bold" }}>Hasil</label>
+              <select value={t.hasil} onChange={e => updateTemuan(i, "hasil", e.target.value)} style={{ width: "100%", padding: 8 }} required>
                 <option value="">Pilih</option>
                 <option>Baik</option>
                 <option>Perlu Perbaikan</option>
@@ -222,10 +207,10 @@ function Fasfield() {
               </select>
             </div>
 
-            <div style={css.g}>
-              <label style={css.lbl}>Foto Temuan</label>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontWeight: "bold" }}>Foto Temuan</label>
               <div style={{ display: "flex", gap: 10 }}>
-                <label style={css.btn}>
+                <label style={{ padding: "8px 14px", background: "#4CAF50", color: "white", cursor: "pointer" }}>
                   Kamera
                   <input
                     type="file"
@@ -235,7 +220,7 @@ function Fasfield() {
                     style={{ display: "none" }}
                   />
                 </label>
-                <label style={css.btn}>
+                <label style={{ padding: "8px 14px", background: "#4CAF50", color: "white", cursor: "pointer" }}>
                   Galeri
                   <input
                     type="file"
@@ -248,28 +233,28 @@ function Fasfield() {
               {t.fotoThumb && <img src={t.fotoThumb} alt="preview" style={{ width: 120, marginTop: 6, borderRadius: 4 }} />}
             </div>
 
-            <div style={css.g}>
-              <label style={css.lbl}>Koordinat</label>
-              <input value={t.koordinat} readOnly style={css.in} />
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontWeight: "bold" }}>Koordinat</label>
+              <input value={t.koordinat} readOnly style={{ width: "100%", padding: 8 }} />
               {t.statusGPS && <p style={{ fontSize: 12, color: "#888" }}>{t.statusGPS}</p>}
             </div>
 
             {form.temuanList.length > 1 && (
-              <button type="button" onClick={() => removeTemuan(i)} style={{ ...css.btn, background: "#d9534f" }}>
+              <button type="button" onClick={() => removeTemuan(i)} style={{ padding: "8px 14px", background: "#d9534f", color: "white", cursor: "pointer" }}>
                 Hapus Temuan
               </button>
             )}
           </div>
         ))}
 
-        <button type="button" onClick={addTemuan} style={css.btn}>+ Tambah Temuan</button>
+        <button type="button" onClick={addTemuan} style={{ padding: "8px 14px", background: "#4CAF50", color: "white", cursor: "pointer" }}>+ Tambah Temuan</button>
 
-        <div style={css.g}>
-          <label style={css.lbl}>Keterangan Umum</label>
-          <textarea name="keterangan" value={form.keterangan} onChange={rootChange} style={css.ta} />
+        <div style={{ marginBottom: 12, marginTop: 20 }}>
+          <label style={{ fontWeight: "bold" }}>Keterangan Umum</label>
+          <textarea name="keterangan" value={form.keterangan} onChange={rootChange} style={{ width: "100%", padding: 8, minHeight: 60 }} />
         </div>
 
-        <button type="button" onClick={downloadPDF} style={css.btn}>Download PDF</button>
+        <button type="button" onClick={downloadPDF} style={{ padding: "10px 18px", background: "#4CAF50", color: "white", fontWeight: "bold", cursor: "pointer" }}>Download PDF</button>
       </form>
     </div>
   );
