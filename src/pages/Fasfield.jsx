@@ -87,13 +87,10 @@ function Fasfield() {
       return { ...p, temuanList: l };
     });
 
-  const fileTemuanChange = async (i, e) => {
-    const file = e.target.files[0];
+  const handleFileInput = async (i, file) => {
     if (!file) return;
-
     const thumb = await resizeImage(file);
     updateTemuan(i, "statusGPS", "Mengambil lokasi...");
-
     let koordinat = "";
     try {
       koordinat = await ambilGPS();
@@ -102,7 +99,6 @@ function Fasfield() {
       console.warn("GPS Error:", err);
       updateTemuan(i, "statusGPS", `❌ Gagal ambil lokasi (${err})`);
     }
-
     setForm(p => {
       const l = [...p.temuanList];
       l[i] = { ...l[i], foto: file, fotoThumb: thumb, koordinat };
@@ -181,7 +177,6 @@ function Fasfield() {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: 20, textAlign: "center" }}>
       <h2>REPORT PATROLI</h2>
-
       <form>
         {["Tanggal", "Wilayah", "Area"].map((label, i) => (
           <div key={i} style={css.g}>
@@ -210,7 +205,6 @@ function Fasfield() {
         {form.temuanList.map((t, i) => (
           <div key={i} style={css.box}>
             <h4>Temuan #{i + 1}</h4>
-
             {["deskripsi", "tindakan"].map(field => (
               <div key={field} style={css.g}>
                 <label style={css.lbl}>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
@@ -237,7 +231,7 @@ function Fasfield() {
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    onChange={e => fileTemuanChange(i, e)}
+                    onChange={e => handleFileInput(i, e.target.files[0])}
                     style={{ display: "none" }}
                   />
                 </label>
@@ -246,7 +240,7 @@ function Fasfield() {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={e => fileTemuanChange(i, e)}
+                    onChange={e => handleFileInput(i, e.target.files[0])}
                     style={{ display: "none" }}
                   />
                 </label>
