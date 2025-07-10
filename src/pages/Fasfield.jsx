@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import logoURL from "../assets/logo-jlm.jpeg"; // pastikan file ini ada
+import logoURL from "../assets/logo-jlm.jpeg";
 
 const LOCAL_KEY = "fasfield_isp_form_v2";
 const PDF_TITLE = "LAPORAN PATROLI";
@@ -183,17 +183,17 @@ function Fasfield() {
       <h2>REPORT PATROLI</h2>
 
       <form>
-        {/* metadata */}
-        {[
-          ["Tanggal", "tanggal", "date"],
-          ["Wilayah", "wilayah", "text"],
-          ["Area", "area", "text"]
-        ].map(([lab, nm, tp]) => (
-          <div key={nm} style={css.g}>
-            <label style={css.lbl}>{lab}</label>
-            <input type={tp} name={nm} value={form[nm]}
-              onChange={rootChange} style={css.in}
-              required={nm !== "area"} />
+        {["Tanggal", "Wilayah", "Area"].map((label, i) => (
+          <div key={i} style={css.g}>
+            <label style={css.lbl}>{label}</label>
+            <input
+              type={label === "Tanggal" ? "date" : "text"}
+              name={label.toLowerCase()}
+              value={form[label.toLowerCase()]}
+              onChange={rootChange}
+              style={css.in}
+              required={label !== "Area"}
+            />
           </div>
         ))}
 
@@ -204,25 +204,23 @@ function Fasfield() {
 
         <div style={css.g}>
           <label style={css.lbl}>Nama File PDF</label>
-          <input type="text" value={filename}
-            onChange={(e) => setFilename(e.target.value)}
-            style={css.in} placeholder="mis: laporan_juli" />
+          <input type="text" value={filename} onChange={e => setFilename(e.target.value)} style={css.in} />
         </div>
 
         {form.temuanList.map((t, i) => (
           <div key={i} style={css.box}>
             <h4>Temuan #{i + 1}</h4>
-            {["deskripsi", "tindakan"].map(f => (
-              <div key={f} style={css.g}>
-                <label style={css.lbl}>{f.charAt(0).toUpperCase() + f.slice(1)}</label>
-                <textarea value={t[f]} onChange={e => updateTemuan(i, f, e.target.value)}
-                  style={css.ta} required />
+
+            {["deskripsi", "tindakan"].map(field => (
+              <div key={field} style={css.g}>
+                <label style={css.lbl}>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                <textarea value={t[field]} onChange={e => updateTemuan(i, field, e.target.value)} style={css.ta} required />
               </div>
             ))}
+
             <div style={css.g}>
               <label style={css.lbl}>Hasil</label>
-              <select value={t.hasil} onChange={e => updateTemuan(i, "hasil", e.target.value)}
-                style={css.sel} required>
+              <select value={t.hasil} onChange={e => updateTemuan(i, "hasil", e.target.value)} style={css.sel} required>
                 <option value="">Pilih</option>
                 <option>Baik</option>
                 <option>Perlu Perbaikan</option>
@@ -230,22 +228,32 @@ function Fasfield() {
               </select>
             </div>
 
-            {/* Kamera atau File Upload */}
             <div style={css.g}>
               <label style={css.lbl}>Foto Temuan</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={e => fileTemuanChange(i, e)}
-                style={css.in}
-              />
-              {t.fotoThumb && (
-                <img src={t.fotoThumb} alt="preview"
-                  style={{ width: 120, marginTop: 6, borderRadius: 4 }} />
-              )}
+              <div style={{ display: "flex", gap: 10 }}>
+                <label style={css.btn}>
+                  Kamera
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={e => fileTemuanChange(i, e)}
+                    style={{ display: "none" }}
+                  />
+                </label>
+                <label style={css.btn}>
+                  Galeri
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => fileTemuanChange(i, e)}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              </div>
+              {t.fotoThumb && <img src={t.fotoThumb} alt="preview" style={{ width: 120, marginTop: 6, borderRadius: 4 }} />}
             </div>
 
-            {/* Status GPS */}
             <div style={css.g}>
               <label style={css.lbl}>Koordinat</label>
               <input value={t.koordinat} readOnly style={css.in} />
@@ -253,27 +261,21 @@ function Fasfield() {
             </div>
 
             {form.temuanList.length > 1 && (
-              <button type="button" onClick={() => removeTemuan(i)}
-                style={{ ...css.btn, background: "#d9534f" }}>
+              <button type="button" onClick={() => removeTemuan(i)} style={{ ...css.btn, background: "#d9534f" }}>
                 Hapus Temuan
               </button>
             )}
           </div>
         ))}
 
-        <button type="button" onClick={addTemuan} style={css.btn}>
-          + Tambah Temuan
-        </button>
+        <button type="button" onClick={addTemuan} style={css.btn}>+ Tambah Temuan</button>
 
         <div style={css.g}>
           <label style={css.lbl}>Keterangan Umum</label>
-          <textarea name="keterangan" value={form.keterangan}
-            onChange={rootChange} style={css.ta} />
+          <textarea name="keterangan" value={form.keterangan} onChange={rootChange} style={css.ta} />
         </div>
 
-        <button type="button" onClick={downloadPDF} style={css.btn}>
-          Download PDF
-        </button>
+        <button type="button" onClick={downloadPDF} style={css.btn}>Download PDF</button>
       </form>
     </div>
   );
