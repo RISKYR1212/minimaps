@@ -48,7 +48,7 @@ const Navbar = () => {
               </div>
               <div className="col-6 col-md-auto">
                 <Link className="nav-link fw-bold fs-5" to="/core">
-                  AlokasiCore
+                  AlokasiCoree
                 </Link>
               </div>
               <div className="col-6 col-md-auto">
@@ -58,7 +58,7 @@ const Navbar = () => {
               </div>
               <div className="col-6 col-md-auto">
                 <Link className="nav-link fw-bold fs-5" to="/material">
-                  Material
+                  Materiall
                 </Link>
               </div>
             </div>
