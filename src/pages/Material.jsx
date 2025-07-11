@@ -101,9 +101,9 @@ const Material = () => {
               {allPICs.map((pic, i) => <option key={i} value={pic}>{pic}</option>)}
             </Form.Select>
           </Form.Group>
-
+    
           <Form.Group className="col-md-3">
-            <Form.Label>Site Gangguan / Maintenance</Form.Label>
+            <Form.Label>Site Gangguan</Form.Label>
             <Form.Control type="text" value={form.site} onChange={(e) => handleChange("site", e.target.value)} />
           </Form.Group>
 
