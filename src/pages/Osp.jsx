@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 import axios from "axios";
 import React, { useState, useEffect } from "react";
 import {
@@ -62,7 +61,7 @@ function Osp(){
 
   const fetchData=async()=>{
     try{
-      const {data}=await axios.get(`${endpoint}?mode=read`);
+      const {data}=await axios.get(`${endpoint}?sheet=maintenance&mode=read`);
       setRows(data.records||[]);
     }catch(e){
       console.error(e); setError("Gagal memuat data");
@@ -97,6 +96,7 @@ function Osp(){
 
   const send=async(data, isEdit = false, index = null)=>{
     const body = new URLSearchParams();
+    body.append("sheet", "maintenance");
     if(isEdit && index !== null){
       body.append("mode", "edit");
       body.append("index", index);
@@ -157,91 +157,90 @@ function Osp(){
       <h4 className="mb-3">Gangguan / Durasi OSP</h4>
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {/* Form Input */}
       <Card className="p-4 shadow-sm mb-4">
         <Form onSubmit={submit}>
-          <Row className="mb-3">
-            <Col md={6}><Form.Label>Tanggal</Form.Label><Form.Control type="date" name="tanggal" value={form.tanggal} onChange={update} required/></Col>
-            <Col md={6}><Form.Label>Hari</Form.Label><Form.Control value={form.hari} readOnly/></Col>
-            <Col md={6} className="mt-3"><Form.Label>Bulan/Tahun</Form.Label><Form.Control value={form.bulan_tahun} readOnly/></Col>
+          <Row className="g-3 mb-3">
+            <Col xs={12} md={6}><Form.Label>Tanggal</Form.Label><Form.Control type="date" name="tanggal" value={form.tanggal} onChange={update} required/></Col>
+            <Col xs={12} md={6}><Form.Label>Hari</Form.Label><Form.Control value={form.hari} readOnly/></Col>
+            <Col xs={12} md={6}><Form.Label>Bulan/Tahun</Form.Label><Form.Control value={form.bulan_tahun} readOnly/></Col>
           </Row>
 
-          <Row className="mb-3">
-            <Col md={6}><Form.Label>User Start</Form.Label><Form.Control type="time" name="start_user" value={form.start_user} onChange={update}/></Col>
-            <Col md={6}><Form.Label>User End</Form.Label><Form.Control type="time" name="end_user" value={form.end_user} onChange={update}/></Col>
-            <Col md={6} className="mt-3"><Form.Label>Durasi User</Form.Label><Form.Control value={form.hasil_durasi_user} readOnly/></Col>
+          <Row className="g-3 mb-3">
+            <Col xs={12} md={6}><Form.Label>User Start</Form.Label><Form.Control type="time" name="start_user" value={form.start_user} onChange={update}/></Col>
+            <Col xs={12} md={6}><Form.Label>User End</Form.Label><Form.Control type="time" name="end_user" value={form.end_user} onChange={update}/></Col>
+            <Col xs={12} md={6}><Form.Label>Durasi User</Form.Label><Form.Control value={form.hasil_durasi_user} readOnly/></Col>
           </Row>
 
-          <Row className="mb-3"><Col>
-            <Form.Check type="switch" label="Gunakan waktu Ticket" checked={useTicket} onChange={e=>setUseTicket(e.target.checked)}/>
-          </Col></Row>
+          <Row className="mb-3"><Col><Form.Check type="switch" label="Gunakan waktu Ticket" checked={useTicket} onChange={e=>setUseTicket(e.target.checked)}/></Col></Row>
 
           {useTicket && (
-            <Row className="mb-3">
-              <Col md={6}><Form.Label>Ticket Start</Form.Label><Form.Control type="time" name="start_ticket" value={form.start_ticket} onChange={update}/></Col>
-              <Col md={6}><Form.Label>Ticket End</Form.Label><Form.Control type="time" name="end_ticket" value={form.end_ticket} onChange={update}/></Col>
-              <Col md={6} className="mt-3"><Form.Label>Durasi Ticket</Form.Label><Form.Control value={form.hasil_durasi_ticket} readOnly/></Col>
-              <Col md={6} className="mt-3"><Form.Label>Selisih Start</Form.Label><Form.Control value={form.selisih_start} readOnly/></Col>
+            <Row className="g-3 mb-3">
+              <Col xs={12} md={6}><Form.Label>Ticket Start</Form.Label><Form.Control type="time" name="start_ticket" value={form.start_ticket} onChange={update}/></Col>
+              <Col xs={12} md={6}><Form.Label>Ticket End</Form.Label><Form.Control type="time" name="end_ticket" value={form.end_ticket} onChange={update}/></Col>
+              <Col xs={12} md={6}><Form.Label>Durasi Ticket</Form.Label><Form.Control value={form.hasil_durasi_ticket} readOnly/></Col>
+              <Col xs={12} md={6}><Form.Label>Selisih Start</Form.Label><Form.Control value={form.selisih_start} readOnly/></Col>
             </Row>
           )}
 
-          <Row className="mb-3">
-            <Col md={6}><Form.Label>Problem</Form.Label><Form.Control name="problem" value={form.problem} onChange={update}/></Col>
-            <Col md={6}><Form.Label>Action</Form.Label><Form.Control name="action" value={form.action} onChange={update}/></Col>
+          <Row className="g-3 mb-3">
+            <Col xs={12} md={6}><Form.Label>Problem</Form.Label><Form.Control name="problem" value={form.problem} onChange={update}/></Col>
+            <Col xs={12} md={6}><Form.Label>Action</Form.Label><Form.Control name="action" value={form.action} onChange={update}/></Col>
           </Row>
 
-          <Row className="mb-3">
-            <Col md={6}><Form.Label>Material Terpakai</Form.Label><Form.Control name="material_terpakai" value={form.material_terpakai} onChange={update}/></Col>
-            <Col md={6}><Form.Label>PIC</Form.Label><Form.Control name="pic" value={form.pic} onChange={update}/></Col>
-            <Col md={6} className="mt-3"><Form.Label>Nomor Ticket</Form.Label><Form.Control name="nomor_ticket" value={form.nomor_ticket} onChange={update}/></Col>
+          <Row className="g-3 mb-3">
+            <Col xs={12} md={6}><Form.Label>Material Terpakai</Form.Label><Form.Control name="material_terpakai" value={form.material_terpakai} onChange={update}/></Col>
+            <Col xs={12} md={6}><Form.Label>PIC</Form.Label><Form.Control name="pic" value={form.pic} onChange={update}/></Col>
+            <Col xs={12} md={6}><Form.Label>Nomor Ticket</Form.Label><Form.Control name="nomor_ticket" value={form.nomor_ticket} onChange={update}/></Col>
           </Row>
 
-          <Row className="mb-3">
-            <Col md={6}><Form.Label>Upload Foto 1</Form.Label><Form.Control type="file" accept="image/*" onChange={e=>e.target.files.length && geo("latlong")}/></Col>
-            <Col md={6}><Form.Label>Lat,Long 1</Form.Label><Form.Control value={form.latlong} readOnly/></Col>
+          <Row className="g-3 mb-3">
+            <Col xs={12} md={6}><Form.Label>Upload Foto 1</Form.Label><Form.Control type="file" accept="image/*" onChange={e=>e.target.files.length && geo("latlong")}/></Col>
+            <Col xs={12} md={6}><Form.Label>Lat,Long 1</Form.Label><Form.Control value={form.latlong} readOnly/></Col>
           </Row>
-          <Row className="mb-3">
-            <Col md={6}><Form.Label>Upload Foto 2</Form.Label><Form.Control type="file" accept="image/*" onChange={e=>e.target.files.length && geo("latlong2")}/></Col>
-            <Col md={6}><Form.Label>Lat,Long 2</Form.Label><Form.Control value={form.latlong2} readOnly/></Col>
+
+          <Row className="g-3 mb-3">
+            <Col xs={12} md={6}><Form.Label>Upload Foto 2</Form.Label><Form.Control type="file" accept="image/*" onChange={e=>e.target.files.length && geo("latlong2")}/></Col>
+            <Col xs={12} md={6}><Form.Label>Lat,Long 2</Form.Label><Form.Control value={form.latlong2} readOnly/></Col>
           </Row>
 
           <Row><Col md={3}><Button type="submit" className="w-100" disabled={loading}>{loading ? "Mengirim…" : "Tambah"}</Button></Col></Row>
         </Form>
       </Card>
 
-      {/* Tabel */}
-      <Table striped bordered hover size="sm" responsive>
-        <thead><tr>{["No","Tanggal","User Start","User End","Durasi User","Ticket Start","Ticket End","Durasi Ticket","Problem","Action","PIC","Nomor Ticket",""].map(h=><th key={h}>{h}</th>)}</tr></thead>
-        <tbody>{rows.map((r,i)=>(
-          <tr key={i}>
-            <td>{i+1}</td>
-            <td>{editIndex === i ? <Form.Control name="tanggal" type="date" value={editForm.tanggal || ''} onChange={updateEditField}/> : fmtDate(r.tanggal)}</td>
-            <td>{editIndex === i ? <Form.Control name="start_user" type="time" value={editForm.start_user || ''} onChange={updateEditField}/> : fmtTime(r.start_user)}</td>
-            <td>{editIndex === i ? <Form.Control name="end_user" type="time" value={editForm.end_user || ''} onChange={updateEditField}/> : fmtTime(r.end_user)}</td>
-            <td>{editIndex === i ? editForm.hasil_durasi_user : r.hasil_durasi_user}</td>
-            <td>{editIndex === i ? <Form.Control name="start_ticket" type="time" value={editForm.start_ticket || ''} onChange={updateEditField}/> : fmtTime(r.start_ticket)}</td>
-            <td>{editIndex === i ? <Form.Control name="end_ticket" type="time" value={editForm.end_ticket || ''} onChange={updateEditField}/> : fmtTime(r.end_ticket)}</td>
-            <td>{editIndex === i ? editForm.hasil_durasi_ticket : r.hasil_durasi_ticket}</td>
-            <td>{editIndex === i ? <Form.Control name="problem" value={editForm.problem || ''} onChange={updateEditField}/> : r.problem}</td>
-            <td>{editIndex === i ? <Form.Control name="action" value={editForm.action || ''} onChange={updateEditField}/> : r.action}</td>
-            <td>{editIndex === i ? <Form.Control name="pic" value={editForm.pic || ''} onChange={updateEditField}/> : r.pic}</td>
-            <td>{editIndex === i ? <Form.Control name="nomor_ticket" value={editForm.nomor_ticket || ''} onChange={updateEditField}/> : r.nomor_ticket}</td>
-            <td className="text-center">
-              {editIndex === i ? (
-                <>
-                  <Button variant="success" size="sm" onClick={saveEdit} className="me-1">✔️</Button>
-                  <Button variant="secondary" size="sm" onClick={cancelEdit}>✖️</Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline-primary" size="sm" className="me-1" onClick={() => startEdit(i)}><PencilSquare /></Button>
-                  <Button variant="outline-danger" size="sm" onClick={()=>delLocal(i)}><X /></Button>
-                </>
-              )}
-            </td>
-          </tr>
-        ))}</tbody>
-      </Table>
+      <div className="table-responsive">
+        <Table striped bordered hover size="sm" className="align-middle text-nowrap">
+          <thead><tr>{["No","Tanggal","User Start","User End","Durasi User","Ticket Start","Ticket End","Durasi Ticket","Problem","Action","PIC","Nomor Ticket",""].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <tbody>{rows.map((r,i)=>(
+            <tr key={i}>
+              <td>{i+1}</td>
+              <td>{editIndex === i ? <Form.Control name="tanggal" type="date" value={editForm.tanggal || ''} onChange={updateEditField}/> : fmtDate(r.tanggal)}</td>
+              <td>{editIndex === i ? <Form.Control name="start_user" type="time" value={editForm.start_user || ''} onChange={updateEditField}/> : fmtTime(r.start_user)}</td>
+              <td>{editIndex === i ? <Form.Control name="end_user" type="time" value={editForm.end_user || ''} onChange={updateEditField}/> : fmtTime(r.end_user)}</td>
+              <td>{editIndex === i ? editForm.hasil_durasi_user : r.hasil_durasi_user}</td>
+              <td>{editIndex === i ? <Form.Control name="start_ticket" type="time" value={editForm.start_ticket || ''} onChange={updateEditField}/> : fmtTime(r.start_ticket)}</td>
+              <td>{editIndex === i ? <Form.Control name="end_ticket" type="time" value={editForm.end_ticket || ''} onChange={updateEditField}/> : fmtTime(r.end_ticket)}</td>
+              <td>{editIndex === i ? editForm.hasil_durasi_ticket : r.hasil_durasi_ticket}</td>
+              <td>{editIndex === i ? <Form.Control name="problem" value={editForm.problem || ''} onChange={updateEditField}/> : r.problem}</td>
+              <td>{editIndex === i ? <Form.Control name="action" value={editForm.action || ''} onChange={updateEditField}/> : r.action}</td>
+              <td>{editIndex === i ? <Form.Control name="pic" value={editForm.pic || ''} onChange={updateEditField}/> : r.pic}</td>
+              <td>{editIndex === i ? <Form.Control name="nomor_ticket" value={editForm.nomor_ticket || ''} onChange={updateEditField}/> : r.nomor_ticket}</td>
+              <td className="text-center">
+                {editIndex === i ? (
+                  <>
+                    <Button variant="success" size="sm" onClick={saveEdit} className="me-1">✔️</Button>
+                    <Button variant="secondary" size="sm" onClick={cancelEdit}>✖️</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline-primary" size="sm" className="me-1" onClick={() => startEdit(i)}><PencilSquare /></Button>
+                    <Button variant="outline-danger" size="sm" onClick={()=>delLocal(i)}><X /></Button>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}</tbody>
+        </Table>
+      </div>
     </Container>
   );
 }

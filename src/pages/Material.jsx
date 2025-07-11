@@ -17,18 +17,18 @@ const allUnits = ["meter", "pcs", "pack", "unit"];
 
 const Material = () => {
   const [data, setData] = useState([]);
-
   const [form, setForm] = useState({
     date: "", pic: "", site: "", material: "", unit: "",
-    quantity: "", saldoAwal: "", terpakai: "", dismantle: ""
+    saldoAwal: "", terpakai: "", dismantle: ""
   });
 
-  // Ambil data dari Sheet saat komponen mount
   const fetchData = async () => {
     try {
       const res = await fetch(`${endpoint}?sheet=material`);
       const json = await res.json();
-      if (json.ok) setData(json.records);
+      if (json.ok && Array.isArray(json.records)) {
+        setData(json.records.filter(r => r.material)); 
+      }
     } catch (err) {
       console.error("Fetch error:", err);
     }
@@ -43,9 +43,8 @@ const Material = () => {
   };
 
   const handleAdd = async () => {
-    const { date, pic, site, material, unit, quantity, saldoAwal, terpakai, dismantle } = form;
-
-    if (!date || !pic || !site || !material || !unit || !quantity || saldoAwal === "" || terpakai === "") {
+    const { date, pic, site, material, unit,  saldoAwal, terpakai, dismantle } = form;
+    if (!date || !pic || !site || !material || !unit || saldoAwal === "" || terpakai === "") {
       alert("Mohon lengkapi semua kolom wajib!");
       return;
     }
@@ -53,7 +52,7 @@ const Material = () => {
     const sisa = Number(saldoAwal) - Number(terpakai);
     const payload = {
       sheet: "material",
-      date, pic, site, material, unit, quantity,
+      date, pic, site, material, unit, 
       saldoAwal, terpakai, sisa, dismantle
     };
 
@@ -63,19 +62,15 @@ const Material = () => {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams(payload)
       });
-
       const result = await res.json();
       if (result.ok) {
-        // Refresh data dari Sheet
         fetchData();
-
-        // Reset form
         setForm({
           date: "", pic: "", site: "", material: "", unit: "",
-          quantity: "", saldoAwal: "", terpakai: "", dismantle: ""
+          saldoAwal: "", terpakai: "", dismantle: ""
         });
       } else {
-        alert("Gagal menyimpan data ke Sheet");
+        alert("❌ Gagal menyimpan data ke Sheet");
       }
     } catch (err) {
       console.error("POST Error:", err);
@@ -86,67 +81,57 @@ const Material = () => {
     <Container className="py-5">
       <h2 className="mb-4">Laporan Pemakaian Material</h2>
 
-      {/* Form Input */}
       <Card className="p-4 mb-5">
         <Form className="row g-3">
           <Form.Group className="col-md-2">
             <Form.Label>Tanggal</Form.Label>
-            <Form.Control type="date" value={form.date} onChange={(e) => handleChange("date", e.target.value)} />
+            <Form.Control type="date" value={form.date} onChange={e => handleChange("date", e.target.value)} />
           </Form.Group>
 
           <Form.Group className="col-md-2">
             <Form.Label>PIC</Form.Label>
-            <Form.Select value={form.pic} onChange={(e) => handleChange("pic", e.target.value)}>
+            <Form.Select value={form.pic} onChange={e => handleChange("pic", e.target.value)}>
               <option value="">Pilih PIC</option>
-              {allPICs.map((pic, i) => <option key={i} value={pic}>{pic}</option>)}
+              {allPICs.map((p, i) => <option key={i} value={p}>{p}</option>)}
             </Form.Select>
           </Form.Group>
-    
+
           <Form.Group className="col-md-3">
             <Form.Label>Site Gangguan</Form.Label>
-            <Form.Control type="text" value={form.site} onChange={(e) => handleChange("site", e.target.value)} />
+            <Form.Control type="text" value={form.site} onChange={e => handleChange("site", e.target.value)} />
           </Form.Group>
 
           <Form.Group className="col-md-3">
             <Form.Label>Material</Form.Label>
-            <Form.Select value={form.material} onChange={(e) => handleChange("material", e.target.value)}>
+            <Form.Select value={form.material} onChange={e => handleChange("material", e.target.value)}>
               <option value="">Pilih Material</option>
-              {allMaterials.map((item, idx) => <option key={idx} value={item}>{item}</option>)}
+              {allMaterials.map((m, i) => <option key={i} value={m}>{m}</option>)}
             </Form.Select>
           </Form.Group>
 
           <Form.Group className="col-md-2">
             <Form.Label>Satuan</Form.Label>
-            <Form.Select value={form.unit} onChange={(e) => handleChange("unit", e.target.value)}>
+            <Form.Select value={form.unit} onChange={e => handleChange("unit", e.target.value)}>
               <option value="">Pilih Satuan</option>
-              {allUnits.map((u, idx) => <option key={idx} value={u}>{u}</option>)}
+              {allUnits.map((u, i) => <option key={i} value={u}>{u}</option>)}
             </Form.Select>
           </Form.Group>
 
-          {/* <Form.Group className="col-md-2">
-            <Form.Label>No SPB</Form.Label>
-            <Form.Control type="number" value={form.quantity} onChange={(e) => handleChange("quantity", e.target.value)} />
-          </Form.Group> */}
-
           <Form.Group className="col-md-2">
             <Form.Label>Saldo Awal</Form.Label>
-            <Form.Control type="number" value={form.saldoAwal} onChange={(e) => handleChange("saldoAwal", e.target.value)} />
+            <Form.Control type="number" value={form.saldoAwal} onChange={e => handleChange("saldoAwal", e.target.value)} />
           </Form.Group>
 
           <Form.Group className="col-md-2">
             <Form.Label>Terpakai</Form.Label>
-            <Form.Control type="number" value={form.terpakai} onChange={(e) => handleChange("terpakai", e.target.value)} />
+            <Form.Control type="number" value={form.terpakai} onChange={e => handleChange("terpakai", e.target.value)} />
           </Form.Group>
 
           <Form.Group className="col-md-2">
             <Form.Label>Sisa</Form.Label>
             <Form.Control
               type="number"
-              value={
-                form.saldoAwal && form.terpakai
-                  ? Number(form.saldoAwal) - Number(form.terpakai)
-                  : ""
-              }
+              value={form.saldoAwal && form.terpakai ? Number(form.saldoAwal) - Number(form.terpakai) : ""}
               placeholder="Auto"
               disabled
             />
@@ -154,7 +139,7 @@ const Material = () => {
 
           <Form.Group className="col-md-2">
             <Form.Label>Dismantle</Form.Label>
-            <Form.Control type="text" value={form.dismantle} onChange={(e) => handleChange("dismantle", e.target.value)} />
+            <Form.Control type="text" value={form.dismantle} onChange={e => handleChange("dismantle", e.target.value)} />
           </Form.Group>
 
           <Form.Group className="col-md-12 mt-3">
@@ -163,7 +148,6 @@ const Material = () => {
         </Form>
       </Card>
 
-      {/* Tabel Data */}
       <Card className="p-4">
         <Table striped bordered hover responsive>
           <thead>
@@ -173,7 +157,7 @@ const Material = () => {
               <th>Site</th>
               <th>Material</th>
               <th>Satuan</th>
-              {/* <th>No SPB</th> */}
+              <th>Jumlah</th>
               <th>Saldo Awal</th>
               <th>Terpakai</th>
               <th>Sisa</th>
@@ -181,20 +165,24 @@ const Material = () => {
             </tr>
           </thead>
           <tbody>
-            {data.map((item, idx) => (
-              <tr key={idx}>
-                <td>{item.date}</td>
-                <td>{item.pic}</td>
-                <td>{item.site}</td>
-                <td>{item.material}</td>
-                <td>{item.unit}</td>
-                <td>{item.quantity}</td>
-                <td>{item.saldoAwal}</td>
-                <td>{item.terpakai}</td>
-                <td>{item.sisa}</td>
-                <td>{item.dismantle}</td>
-              </tr>
-            ))}
+            {data.length === 0 ? (
+              <tr><td colSpan="10" className="text-center">Belum ada data</td></tr>
+            ) : (
+              data.map((item, i) => (
+                <tr key={i}>
+                  <td>{item.date}</td>
+                  <td>{item.pic}</td>
+                  <td>{item.site}</td>
+                  <td>{item.material}</td>
+                  <td>{item.unit}</td>
+                 
+                  <td>{item.saldoAwal}</td>
+                  <td>{item.terpakai}</td>
+                  <td>{item.sisa}</td>
+                  <td>{item.dismantle}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </Table>
       </Card>
