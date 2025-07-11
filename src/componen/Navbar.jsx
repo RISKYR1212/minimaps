@@ -24,21 +24,15 @@ const Navbar = () => {
           aria-expanded="false"
           aria-label="Toggle navigation"
         >
-          <span className="navbar-toggler-icon" style={{ paddingLeft: "50px", paddingRight: "15px" }}
-/>
-          
+          <span className="navbar-toggler-icon" />
         </button>
 
         {/* Navbar Items */}
         <div className="collapse navbar-collapse" id="navbarNavGrid">
           <div className="container">
             <div className="row g-4">
-              {/* Each nav link as a column (auto width on desktop, full width on mobile) */}
               <div className="col-6 col-md-auto">
-                <Link
-                  className="nav-link fw-bold fs-5"
-                  to="/"
-                >
+                <Link className="nav-link fw-bold fs-5" to="/">
                   Home
                 </Link>
               </div>
@@ -60,6 +54,11 @@ const Navbar = () => {
               <div className="col-6 col-md-auto">
                 <Link className="nav-link fw-bold fs-5" to="/osp">
                   OSP
+                </Link>
+              </div>
+              <div className="col-6 col-md-auto">
+                <Link className="nav-link fw-bold fs-5" to="/material">
+                  Material
                 </Link>
               </div>
             </div>
