@@ -15,16 +15,16 @@ createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </StrictMode>,
 )
-register({
-  onUpdate: (registration) => {
-    if (registration.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+// register({
+//   onUpdate: (registration) => {
+//     if (registration.waiting) {
+//       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
 
-      registration.waiting.addEventListener('statechange', (event) => {
-        if (event.target.state === 'activated') {
-          window.location.reload();
-        }
-      });
-    }
-  },
-});
+//       registration.waiting.addEventListener('statechange', (event) => {
+//         if (event.target.state === 'activated') {
+//           window.location.reload();
+//         }
+//       });
+//     }
+//   },
+// });
