@@ -157,7 +157,6 @@ const Material = () => {
               <th>Site</th>
               <th>Material</th>
               <th>Satuan</th>
-              <th>Jumlah</th>
               <th>Saldo Awal</th>
               <th>Terpakai</th>
               <th>Sisa</th>
