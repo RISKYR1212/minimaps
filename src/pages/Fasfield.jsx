@@ -4,7 +4,7 @@ import "jspdf-autotable";
 import logoURL from "../assets/logo-jlm.jpeg";
 import axios from "axios";
 import {
-  Container, Row, Col, Form, Button, Card, Table, Image, Modal
+  Container, Row, Col, Form, Button, Card, Image
 } from "react-bootstrap";
 
 const LOCAL_KEY = "fasfield_isp_form_v2";
@@ -25,7 +25,7 @@ const ambilGPS = () => new Promise((ok, no) => {
   );
 });
 
-const resizeImage = (file, max = 600, q = 0.8) => new Promise(ok => {
+const resizeImage = (file, max = 600, q = 0.8) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => {
     const img = new Image();
@@ -35,10 +35,12 @@ const resizeImage = (file, max = 600, q = 0.8) => new Promise(ok => {
       c.width = img.width * scale;
       c.height = img.height * scale;
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      ok(c.toDataURL("image/jpeg", q));
+      resolve(c.toDataURL("image/jpeg", q));
     };
+    img.onerror = () => reject("Gagal memuat gambar");
     img.src = reader.result;
   };
+  reader.onerror = () => reject("Gagal membaca file gambar");
   reader.readAsDataURL(file);
 });
 
@@ -48,8 +50,6 @@ function Fasfield() {
     tanggal: "", hari: "", wilayah: "", area: "", keterangan: "",
     temuanList: [blankTemuan()], filename: "patroli"
   });
-  const [records, setRecords] = useState([]);
-  const [previewIndex, setPreviewIndex] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(LOCAL_KEY);
@@ -68,7 +68,7 @@ function Fasfield() {
 
   useEffect(() => {
     if (!loaded) return;
-    const safeTemuan = form.temuanList.map(({ foto, fotoThumb, ...r }) => r);
+    const safeTemuan = form.temuanList.map(({ foto, ...r }) => r);
     localStorage.setItem(LOCAL_KEY, JSON.stringify({ ...form, temuanList: safeTemuan }));
   }, [form, loaded]);
 
@@ -92,7 +92,6 @@ function Fasfield() {
     let koordinat = "";
     try {
       koordinat = await ambilGPS();
-      updateTemuan(i, "statusGPS", "✅ Lokasi berhasil diambil");
     } catch (err) {
       updateTemuan(i, "statusGPS", `❌ Gagal ambil lokasi (${err})`);
     }
@@ -105,12 +104,23 @@ function Fasfield() {
     input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const thumb = await resizeImage(file);
-      setForm(p => {
-        const l = [...p.temuanList];
-        l[i] = { ...l[i], foto: file, fotoThumb: thumb, koordinat };
-        return { ...p, temuanList: l };
-      });
+      try {
+        const thumb = await resizeImage(file);
+        setForm((p) => {
+          const l = [...p.temuanList];
+          l[i] = {
+            ...l[i],
+            foto: file,
+            fotoThumb: thumb,
+            koordinat,
+            statusGPS: "✅ Lokasi berhasil diambil"
+          };
+          return { ...p, temuanList: l };
+        });
+      } catch (err) {
+        console.error("Gagal proses gambar:", err);
+        alert("❌ Gagal memproses gambar. Silakan coba lagi.");
+      }
     };
     input.click();
   };
@@ -196,116 +206,66 @@ function Fasfield() {
   };
 
   return (
-    <Container className="my-4">
-      <h3 className="text-center mb-4">Laporan Patroli Fasfield</h3>
-
+    <Container className="p-4">
+      <h2 className="text-center mb-4">Form Patroli Fasfield</h2>
       <Form>
-        <Row className="g-3">
-          <Col xs={12} md={6}><Form.Group><Form.Label>Tanggal</Form.Label><Form.Control type="date" name="tanggal" value={form.tanggal} onChange={rootChange} /></Form.Group></Col>
-          <Col xs={12} md={6}><Form.Group><Form.Label>Hari</Form.Label><Form.Control readOnly value={form.hari} /></Form.Group></Col>
-          <Col xs={12} md={6}><Form.Group><Form.Label>Wilayah</Form.Label><Form.Control name="wilayah" value={form.wilayah} onChange={rootChange} /></Form.Group></Col>
-          <Col xs={12} md={6}><Form.Group><Form.Label>Area</Form.Label><Form.Control name="area" value={form.area} onChange={rootChange} /></Form.Group></Col>
+        <Row className="g-3 mb-4">
+          <Col md={4}><Form.Control type="date" name="tanggal" value={form.tanggal} onChange={rootChange} /></Col>
+          <Col md={2}><Form.Control readOnly value={form.hari} /></Col>
+          <Col md={3}><Form.Control placeholder="Wilayah" name="wilayah" value={form.wilayah} onChange={rootChange} /></Col>
+          <Col md={3}><Form.Control placeholder="Area" name="area" value={form.area} onChange={rootChange} /></Col>
+          <Col><Form.Control placeholder="Keterangan" name="keterangan" value={form.keterangan} onChange={rootChange} /></Col>
         </Row>
 
-        {form.temuanList.map((t, i) => (
-          <Card key={i} className="mt-4">
+        {form.temuanList.map((temuan, i) => (
+          <Card key={i} className="mb-4 shadow-sm">
             <Card.Body>
-              <Card.Title>Temuan #{i + 1}</Card.Title>
-              <Form.Group><Form.Label>Deskripsi</Form.Label><Form.Control as="textarea" rows={2} value={t.deskripsi} onChange={e => updateTemuan(i, "deskripsi", e.target.value)} /></Form.Group>
-              <Form.Group><Form.Label>Tindakan</Form.Label><Form.Control as="textarea" rows={2} value={t.tindakan} onChange={e => updateTemuan(i, "tindakan", e.target.value)} /></Form.Group>
-              <Form.Group><Form.Label>Hasil</Form.Label>
-                <Form.Select value={t.hasil} onChange={e => updateTemuan(i, "hasil", e.target.value)}>
-                  <option value="">Pilih Hasil</option>
-                  <option>Baik</option>
-                  <option>Perlu Perbaikan</option>
-                  <option>Darurat</option>
-                </Form.Select>
-              </Form.Group>
-              <Form.Group><Form.Label>Foto & Lokasi</Form.Label><br />
-                <div className="d-flex gap-2 flex-wrap">
-                  <Button variant="outline-primary" onClick={() => ambilFoto(i, true)}>📷 Kamera</Button>
-                  <Button variant="outline-secondary" onClick={() => ambilFoto(i, false)}>🖼 Galeri</Button>
-                </div>
-                {t.fotoThumb && (
-                  <div className="position-relative d-inline-block mt-2">
-                    <Image
-                      src={t.fotoThumb}
-                      thumbnail
-                      width={100}
-                      onClick={() => setPreviewIndex(i)}
-                      style={{ border: "2px solid green", cursor: "pointer" }}
-                    />
-                    <span className="badge bg-success position-absolute top-0 start-100 translate-middle rounded-pill">✔</span>
-                  </div>
-                )}
-                <div className="mt-2 small text-muted">{t.statusGPS}</div>
-              </Form.Group>
-              <Form.Group><Form.Label>Koordinat</Form.Label><Form.Control readOnly value={t.koordinat} /></Form.Group>
-              {form.temuanList.length > 1 && <Button variant="danger" size="sm" onClick={() => removeTemuan(i)} className="mt-2">Hapus Temuan</Button>}
+              <Row className="g-3">
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label>Deskripsi</Form.Label>
+                    <Form.Control value={temuan.deskripsi} onChange={(e) => updateTemuan(i, "deskripsi", e.target.value)} />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label>Tindakan</Form.Label>
+                    <Form.Control value={temuan.tindakan} onChange={(e) => updateTemuan(i, "tindakan", e.target.value)} />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group>
+                    <Form.Label>Hasil</Form.Label>
+                    <Form.Control value={temuan.hasil} onChange={(e) => updateTemuan(i, "hasil", e.target.value)} />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Row className="g-3 mt-3">
+                <Col md={6} className="d-flex align-items-center gap-2">
+                  <Button variant="primary" onClick={() => ambilFoto(i, true)}>Ambil Foto</Button>
+                  <Button variant="secondary" onClick={() => ambilFoto(i, false)}>Dari Galeri</Button>
+                </Col>
+                <Col md={6} className="text-end">
+                  {temuan.fotoThumb && <Image src={temuan.fotoThumb} thumbnail style={{ maxHeight: 120 }} />}
+                  <div className="text-muted small">{temuan.statusGPS}</div>
+                </Col>
+              </Row>
+              <div className="text-end mt-3">
+                <Button variant="danger" onClick={() => removeTemuan(i)} disabled={form.temuanList.length === 1}>Hapus Temuan</Button>
+              </div>
             </Card.Body>
           </Card>
         ))}
 
-        <div className="mt-3">
-          <Button onClick={addTemuan}>+ Tambah Temuan</Button>
+        <div className="text-center mb-4">
+          <Button variant="success" onClick={addTemuan}>+ Tambah Temuan</Button>
         </div>
 
-        <Form.Group className="my-3">
-          <Form.Label>Keterangan Umum</Form.Label>
-          <Form.Control as="textarea" rows={3} name="keterangan" value={form.keterangan} onChange={rootChange} />
-        </Form.Group>
-
-        <div className="d-flex flex-wrap gap-2">
-          <Button variant="primary" onClick={submitToSheet}>Kirim ke Sheets</Button>
-          <Button variant="success" onClick={generatePDF}>📄 Unduh PDF</Button>
-        </div>
+        <Row>
+          <Col><Button onClick={submitToSheet} className="w-100">Kirim ke Google Sheets</Button></Col>
+          <Col><Button variant="secondary" onClick={generatePDF} className="w-100">Download PDF</Button></Col>
+        </Row>
       </Form>
-
-      <hr className="my-4" />
-      <h5>Data Patroli Sebelumnya</h5>
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Tanggal</th>
-            <th>Wilayah</th>
-            <th>Area</th>
-            <th>Deskripsi</th>
-            <th>Tindakan</th>
-            <th>Hasil</th>
-            <th>Koordinat</th>
-          </tr>
-        </thead>
-        <tbody>
-          {records.length === 0 ? (
-            <tr><td colSpan="8" className="text-center">Tidak ada data</td></tr>
-          ) : (
-            records.map((r, i) => (
-              <tr key={i}>
-                <td>{i + 1}</td>
-                <td>{r.tanggal}</td>
-                <td>{r.wilayah}</td>
-                <td>{r.area}</td>
-                <td>{r.deskripsi}</td>
-                <td>{r.tindakan}</td>
-                <td>{r.hasil}</td>
-                <td>{r.koordinat}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </Table>
-
-      <Modal show={previewIndex !== null} onHide={() => setPreviewIndex(null)} centered size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Pratinjau Foto Temuan #{previewIndex + 1}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="text-center">
-          {previewIndex !== null && form.temuanList[previewIndex].fotoThumb && (
-            <Image src={form.temuanList[previewIndex].fotoThumb} fluid />
-          )}
-        </Modal.Body>
-      </Modal>
     </Container>
   );
 }
