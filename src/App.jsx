@@ -8,7 +8,7 @@ import Maps from './pages/Maps';
 import Fasfield from './pages/Fasfield';
 import Core from './pages/Core';
 import Osp from './pages/Osp';
-import Material from './pages/Material'; // tambahkan jika belum
+import Material from './pages/Material'; 
 
 function App() {
   const [count, setCount] = useState(0);

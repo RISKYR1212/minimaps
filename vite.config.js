@@ -12,8 +12,8 @@ plugins: [
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
-        name: 'MRSKY',
-        short_name: 'RZKY',
+        name: 'REPORT FOC',
+        short_name: 'RFOC',
         theme_color: '#ffffff',
         icons: [
             {
