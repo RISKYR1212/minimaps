@@ -3,7 +3,9 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import logoURL from "../assets/logo-jlm.jpeg";
 import axios from "axios";
-import { Container, Row, Col, Form, Button, Card, Table, Image, Modal } from "react-bootstrap";
+import {
+  Container, Row, Col, Form, Button, Card, Table, Image, Modal
+} from "react-bootstrap";
 
 const LOCAL_KEY = "fasfield_isp_form_v2";
 const PDF_TITLE = "LAPORAN PATROLI";
@@ -24,16 +26,20 @@ const ambilGPS = () => new Promise((ok, no) => {
 });
 
 const resizeImage = (file, max = 600, q = 0.8) => new Promise(ok => {
-  const img = new Image();
-  img.onload = () => {
-    const c = document.createElement("canvas");
-    const scale = max / Math.max(img.width, img.height);
-    c.width = img.width * scale;
-    c.height = img.height * scale;
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    ok(c.toDataURL("image/jpeg", q));
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      const scale = max / Math.max(img.width, img.height);
+      c.width = img.width * scale;
+      c.height = img.height * scale;
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      ok(c.toDataURL("image/jpeg", q));
+    };
+    img.src = reader.result;
   };
-  img.src = URL.createObjectURL(file);
+  reader.readAsDataURL(file);
 });
 
 function Fasfield() {
@@ -43,7 +49,7 @@ function Fasfield() {
     temuanList: [blankTemuan()], filename: "patroli"
   });
   const [records, setRecords] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(LOCAL_KEY);
@@ -82,8 +88,7 @@ function Fasfield() {
       return { ...p, temuanList: l };
     });
 
-  const ambilFotoDenganGPS = async (i) => {
-    updateTemuan(i, "statusGPS", "Mengambil lokasi...");
+  const ambilFoto = async (i, capture = false) => {
     let koordinat = "";
     try {
       koordinat = await ambilGPS();
@@ -95,7 +100,8 @@ function Fasfield() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    input.capture = "environment";
+    if (capture) input.capture = "environment";
+
     input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -134,18 +140,15 @@ function Fasfield() {
       doc.text(`Koordinat: ${t.koordinat}`, 14, y); y += 5;
 
       if (t.fotoThumb) {
-        const img = new Image();
-        img.src = t.fotoThumb;
-        await new Promise(resolve => {
-          img.onload = () => {
-            const ratio = img.height / img.width;
-            const width = 60;
-            const height = width * ratio;
-            doc.addImage(img, "JPEG", 14, y, width, height);
-            y += height + 5;
-            resolve();
-          };
-        });
+        const width = 60;
+        const height = 45;
+        try {
+          doc.addImage(t.fotoThumb, "JPEG", 14, y, width, height);
+          y += height + 5;
+        } catch (err) {
+          console.warn("❌ Gagal menyisipkan gambar:", err);
+          y += 5;
+        }
       } else {
         y += 5;
       }
@@ -219,8 +222,22 @@ function Fasfield() {
                 </Form.Select>
               </Form.Group>
               <Form.Group><Form.Label>Foto & Lokasi</Form.Label><br />
-                <Button variant="outline-primary" onClick={() => ambilFotoDenganGPS(i)}>📷 Ambil Foto + Lokasi</Button>
-                {t.fotoThumb && <Image src={t.fotoThumb} thumbnail className="mt-2" width={100} onClick={() => setShowPreview(true)} />}
+                <div className="d-flex gap-2 flex-wrap">
+                  <Button variant="outline-primary" onClick={() => ambilFoto(i, true)}>📷 Kamera</Button>
+                  <Button variant="outline-secondary" onClick={() => ambilFoto(i, false)}>🖼 Galeri</Button>
+                </div>
+                {t.fotoThumb && (
+                  <div className="position-relative d-inline-block mt-2">
+                    <Image
+                      src={t.fotoThumb}
+                      thumbnail
+                      width={100}
+                      onClick={() => setPreviewIndex(i)}
+                      style={{ border: "2px solid green", cursor: "pointer" }}
+                    />
+                    <span className="badge bg-success position-absolute top-0 start-100 translate-middle rounded-pill">✔</span>
+                  </div>
+                )}
                 <div className="mt-2 small text-muted">{t.statusGPS}</div>
               </Form.Group>
               <Form.Group><Form.Label>Koordinat</Form.Label><Form.Control readOnly value={t.koordinat} /></Form.Group>
@@ -279,10 +296,14 @@ function Fasfield() {
         </tbody>
       </Table>
 
-      <Modal show={showPreview} onHide={() => setShowPreview(false)} centered size="lg">
-        <Modal.Header closeButton><Modal.Title>Pratinjau Foto</Modal.Title></Modal.Header>
+      <Modal show={previewIndex !== null} onHide={() => setPreviewIndex(null)} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Pratinjau Foto Temuan #{previewIndex + 1}</Modal.Title>
+        </Modal.Header>
         <Modal.Body className="text-center">
-          {form.temuanList.map((t, i) => t.fotoThumb && <Image key={i} src={t.fotoThumb} fluid className="mb-3" />)}
+          {previewIndex !== null && form.temuanList[previewIndex].fotoThumb && (
+            <Image src={form.temuanList[previewIndex].fotoThumb} fluid />
+          )}
         </Modal.Body>
       </Modal>
     </Container>
