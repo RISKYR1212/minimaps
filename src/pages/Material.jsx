@@ -22,12 +22,15 @@ const Material = () => {
     saldoAwal: "", terpakai: "", dismantle: ""
   });
 
+  const [editMode, setEditMode] = useState(false);
+  const [editIndex, setEditIndex] = useState(null);
+
   const fetchData = async () => {
     try {
       const res = await fetch(`${endpoint}?sheet=material`);
       const json = await res.json();
       if (json.ok && Array.isArray(json.records)) {
-        setData(json.records.filter(r => r.material)); 
+        setData(json.records.filter(r => r.material));
       }
     } catch (err) {
       console.error("Fetch error:", err);
@@ -43,7 +46,7 @@ const Material = () => {
   };
 
   const handleAdd = async () => {
-    const { date, pic, site, material, unit,  saldoAwal, terpakai, dismantle } = form;
+    const { date, pic, site, material, unit, saldoAwal, terpakai, dismantle } = form;
     if (!date || !pic || !site || !material || !unit || saldoAwal === "" || terpakai === "") {
       alert("Mohon lengkapi semua kolom wajib!");
       return;
@@ -52,9 +55,14 @@ const Material = () => {
     const sisa = Number(saldoAwal) - Number(terpakai);
     const payload = {
       sheet: "material",
-      date, pic, site, material, unit, 
+      date, pic, site, material, unit,
       saldoAwal, terpakai, sisa, dismantle
     };
+
+    if (editMode && editIndex !== null) {
+      payload.edit = "true";
+      payload.index = editIndex + 2; // Tambahkan 2 karena baris ke-1 = header, ke-2 = data pertama
+    }
 
     try {
       const res = await fetch(endpoint, {
@@ -69,6 +77,8 @@ const Material = () => {
           date: "", pic: "", site: "", material: "", unit: "",
           saldoAwal: "", terpakai: "", dismantle: ""
         });
+        setEditMode(false);
+        setEditIndex(null);
       } else {
         alert("❌ Gagal menyimpan data ke Sheet");
       }
@@ -143,7 +153,9 @@ const Material = () => {
           </Form.Group>
 
           <Form.Group className="col-md-12 mt-3">
-            <Button onClick={handleAdd}>Tambah</Button>
+            <Button onClick={handleAdd}>
+              {editMode ? "💾 Simpan Perubahan" : "➕ Tambah"}
+            </Button>
           </Form.Group>
         </Form>
       </Card>
@@ -161,6 +173,7 @@ const Material = () => {
               <th>Terpakai</th>
               <th>Sisa</th>
               <th>Dismantle</th>
+              <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -174,11 +187,32 @@ const Material = () => {
                   <td>{item.site}</td>
                   <td>{item.material}</td>
                   <td>{item.unit}</td>
-                 
                   <td>{item.saldoAwal}</td>
                   <td>{item.terpakai}</td>
                   <td>{item.sisa}</td>
                   <td>{item.dismantle}</td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="warning"
+                      onClick={() => {
+                        setForm({
+                          date: item.date,
+                          pic: item.pic,
+                          site: item.site,
+                          material: item.material,
+                          unit: item.unit,
+                          saldoAwal: item.saldoAwal,
+                          terpakai: item.terpakai,
+                          dismantle: item.dismantle || ""
+                        });
+                        setEditMode(true);
+                        setEditIndex(i);
+                      }}
+                    >
+                      ✏️
+                    </Button>
+                  </td>
                 </tr>
               ))
             )}
