@@ -74,7 +74,7 @@ const Navbar = () => {
                 transition: 'all 0.3s ease',
               }}
             />
-            JLM Patrol
+            Rizky Rispaldi
           </Link>
 
           {/* Right Controls */}
