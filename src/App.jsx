@@ -1,6 +1,6 @@
 // App.jsx
 import { useState } from 'react';
-import { Routes, Route } from 'react-router-dom'; // ✅ hanya ini
+import { Routes, Route } from 'react-router-dom'; 
 
 import Navbar from './componen/Navbar';
 import Home from './pages/Home';
