@@ -53,7 +53,6 @@ const Navbar = () => {
     { path: '/material', label: 'Material' },
   ];
 
-  // ⛔ Pastikan sidebar tertutup saat klik link
   const handleLinkClick = () => {
     const sidebar = document.getElementById('sidebarMenu');
     if (sidebar) {
@@ -92,6 +91,25 @@ const Navbar = () => {
             Rizky Rispaldi
           </Link>
 
+          {/* Menu navigasi horizontal untuk laptop */}
+          <ul className="navbar-nav d-none d-lg-flex ms-auto me-3">
+            {navItems.map(({ path, label }) => (
+              <li key={path} className="nav-item">
+                <Link
+                  to={path}
+                  className="nav-link"
+                  style={{
+                    ...navLinkBase,
+                    ...(isActive(path) ? activeLinkStyle : {}),
+                  }}
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          {/* Ikon kanan atas */}
           <div className="d-flex align-items-center">
             <button className="btn btn-sm btn-outline-secondary me-2" onClick={toggleTheme}>
               {darkMode ? <FaSun size={18} /> : <FaMoon size={18} />}
@@ -99,6 +117,7 @@ const Navbar = () => {
 
             <FaUserCircle size={26} className="text-secondary me-3" />
 
+            {/* Tombol sidebar untuk mobile */}
             <button
               className="btn btn-outline-primary d-lg-none"
               type="button"
@@ -112,6 +131,7 @@ const Navbar = () => {
         </div>
       </nav>
 
+      {/* Sidebar untuk mobile */}
       <div
         className={`offcanvas offcanvas-start ${darkMode ? 'text-bg-dark' : ''}`}
         tabIndex="-1"
