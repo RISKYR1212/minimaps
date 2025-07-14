@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FaMoon, FaSun, FaUserCircle, FaBars } from 'react-icons/fa';
+import { Offcanvas } from 'bootstrap';
 
 const Navbar = () => {
   const location = useLocation();
@@ -52,6 +53,17 @@ const Navbar = () => {
     { path: '/material', label: 'Material' },
   ];
 
+  // ⛔ Pastikan sidebar tertutup saat klik link
+  const handleLinkClick = () => {
+    const sidebar = document.getElementById('sidebarMenu');
+    if (sidebar) {
+      const bsOffcanvas = Offcanvas.getInstance(sidebar);
+      if (bsOffcanvas) {
+        bsOffcanvas.hide();
+      }
+    }
+  };
+
   return (
     <>
       <nav
@@ -59,11 +71,15 @@ const Navbar = () => {
         style={navbarStyle}
       >
         <div className="container-fluid d-flex justify-content-between align-items-center">
-          <Link to="/" className="navbar-brand d-flex align-items-center" style={{
-            fontWeight: 'bold',
-            fontSize: scrolled ? '1rem' : '1.2rem',
-            transition: 'font-size 0.3s ease',
-          }}>
+          <Link
+            to="/"
+            className="navbar-brand d-flex align-items-center"
+            style={{
+              fontWeight: 'bold',
+              fontSize: scrolled ? '1rem' : '1.2rem',
+              transition: 'font-size 0.3s ease',
+            }}
+          >
             <img
               src="https://jlm.net.id/new-logo-jlm.png"
               alt="Logo JLM"
@@ -113,11 +129,11 @@ const Navbar = () => {
                 <Link
                   to={path}
                   className="nav-link"
+                  onClick={handleLinkClick}
                   style={{
                     ...navLinkBase,
                     ...(isActive(path) ? activeLinkStyle : {}),
                   }}
-                  data-bs-dismiss="offcanvas"
                 >
                   {label}
                 </Link>
