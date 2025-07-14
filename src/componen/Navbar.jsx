@@ -17,6 +17,10 @@ const Navbar = () => {
   }, []);
 
   const navbarStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: darkMode ? '#212529' : 'rgba(255, 255, 255, 0.9)',
     backdropFilter: !darkMode ? 'blur(10px)' : 'none',
     WebkitBackdropFilter: !darkMode ? 'blur(10px)' : 'none',
@@ -24,7 +28,7 @@ const Navbar = () => {
     boxShadow: scrolled ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
     paddingTop: scrolled ? '6px' : '16px',
     paddingBottom: scrolled ? '6px' : '16px',
-    zIndex: 999,
+    zIndex: 1050,
   };
 
   const navLinkBase = {
@@ -55,16 +59,11 @@ const Navbar = () => {
         style={navbarStyle}
       >
         <div className="container-fluid d-flex justify-content-between align-items-center">
-          {/* Brand */}
-          <Link
-            to="/"
-            className="navbar-brand d-flex align-items-center"
-            style={{
-              fontWeight: 'bold',
-              fontSize: scrolled ? '1rem' : '1.2rem',
-              transition: 'font-size 0.3s ease',
-            }}
-          >
+          <Link to="/" className="navbar-brand d-flex align-items-center" style={{
+            fontWeight: 'bold',
+            fontSize: scrolled ? '1rem' : '1.2rem',
+            transition: 'font-size 0.3s ease',
+          }}>
             <img
               src="https://jlm.net.id/new-logo-jlm.png"
               alt="Logo JLM"
@@ -77,17 +76,13 @@ const Navbar = () => {
             Rizky Rispaldi
           </Link>
 
-          {/* Right Controls */}
           <div className="d-flex align-items-center">
-            {/* Theme Toggle */}
             <button className="btn btn-sm btn-outline-secondary me-2" onClick={toggleTheme}>
               {darkMode ? <FaSun size={18} /> : <FaMoon size={18} />}
             </button>
 
-            {/* Avatar */}
             <FaUserCircle size={26} className="text-secondary me-3" />
 
-            {/* Sidebar Toggle Button */}
             <button
               className="btn btn-outline-primary d-lg-none"
               type="button"
@@ -101,7 +96,6 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Sidebar Offcanvas */}
       <div
         className={`offcanvas offcanvas-start ${darkMode ? 'text-bg-dark' : ''}`}
         tabIndex="-1"
