@@ -24,6 +24,7 @@ const Material = () => {
 
   const [editMode, setEditMode] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
+  const [loading, setLoading] = useState(false); // <-- tambah loading
 
   const fetchData = async () => {
     try {
@@ -60,9 +61,11 @@ const Material = () => {
     };
 
     if (editMode && editIndex !== null) {
-      payload.edit = "true";
-      payload.index = editIndex + 2; // Tambahkan 2 karena baris ke-1 = header, ke-2 = data pertama
+      payload.edit = "edit";
+      payload.index = editIndex + 2;
     }
+
+    setLoading(true);
 
     try {
       const res = await fetch(endpoint, {
@@ -79,11 +82,15 @@ const Material = () => {
         });
         setEditMode(false);
         setEditIndex(null);
+        alert(editMode ? "✅ Data berhasil diedit!" : "✅ Data berhasil ditambahkan!");
       } else {
         alert("❌ Gagal menyimpan data ke Sheet");
       }
     } catch (err) {
       console.error("POST Error:", err);
+      alert("❌ Terjadi kesalahan koneksi");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -153,8 +160,10 @@ const Material = () => {
           </Form.Group>
 
           <Form.Group className="col-md-12 mt-3">
-            <Button onClick={handleAdd}>
-              {editMode ? "💾 Simpan Perubahan" : "➕ Tambah"}
+            <Button onClick={handleAdd} disabled={loading}>
+              {loading
+                ? (editMode ? "⏳ Menyimpan..." : "⏳ Menambahkan...")
+                : (editMode ? "💾 Simpan Perubahan" : "➕ Tambah")}
             </Button>
           </Form.Group>
         </Form>
@@ -210,7 +219,7 @@ const Material = () => {
                         setEditIndex(i);
                       }}
                     >
-                      ✏️
+                      Edit
                     </Button>
                   </td>
                 </tr>
