@@ -45,14 +45,11 @@ const resizeImage = (file, max = 600, q = 0.8) => new Promise((resolve, reject) 
 
 function Fasfield() {
   const [form, setForm] = useState({
-    tanggal: "",
-    wilayah: "",
-    area: "",
+    tanggal: "", wilayah: "", area: "",
     temuanList: [blankTemuan()],
-    filename: "patroli"
+    filename: "patroli",
+    _index: null
   });
-
-  const [editIndex, setEditIndex] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [previewIndex, setPreviewIndex] = useState(null);
@@ -71,25 +68,12 @@ function Fasfield() {
     fetchData();
   }, []);
 
-  const handleEditTemuan = (row, i) => {
-    setForm({
-      tanggal: row.tanggal,
-      wilayah: row.wilayah,
-      area: row.area,
-      temuanList: [{
-        deskripsi: row.deskripsi,
-        tindakan: row.tindakan,
-        hasil: row.hasil,
-        foto: null,
-        fotoThumb: "",
-        koordinat: row.koordinat,
-        statusGPS: ""
-      }],
-      filename: "patroli"
+  const updateTemuan = (i, k, v) =>
+    setForm(p => {
+      const l = [...p.temuanList];
+      l[i] = { ...l[i], [k]: v };
+      return { ...p, temuanList: l };
     });
-    setEditIndex(i);
-    setEditMode(true);
-  };
 
   const ambilFoto = async (i, capture = false) => {
     let koordinat = "";
@@ -111,95 +95,98 @@ function Fasfield() {
         const thumb = await resizeImage(file);
         setPreviewImage({ file, thumb, koordinat });
         setPreviewIndex(i);
-      } catch (err) {
-        alert("❌ Gagal memproses gambar. Silakan coba lagi.");
+      } catch {
+        alert("❌ Gagal memproses gambar.");
       }
     };
     input.click();
   };
 
-  const updateTemuan = (i, k, v) =>
-    setForm(p => {
-      const l = [...p.temuanList];
-      l[i] = { ...l[i], [k]: v };
-      return { ...p, temuanList: l };
+  const handleEditTemuan = (row) => {
+    setForm({
+      tanggal: row.tanggal,
+      wilayah: row.wilayah,
+      area: row.area,
+      temuanList: [{
+        deskripsi: row.deskripsi,
+        tindakan: row.tindakan,
+        hasil: row.hasil,
+        foto: null,
+        fotoThumb: "",
+        koordinat: row.koordinat,
+        statusGPS: ""
+      }],
+      filename: "patroli",
+      _index: row._index
     });
+    setEditMode(true);
+  };
 
- const generatePDFBlob = async () => {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  doc.setFont("times", "");
+  const generatePDFBlob = async () => {
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    doc.setFont("times", "");
 
-  try {
-    const img = new Image();
-    img.src = logoURL;
-    await new Promise((resolve) => { img.onload = () => resolve(); });
-    doc.addImage(img, "JPEG", 88, 10, 35, 20);
-  } catch {}
+    try {
+      const img = new Image();
+      img.src = logoURL;
+      await new Promise((resolve) => { img.onload = () => resolve(); });
+      doc.addImage(img, "JPEG", 88, 10, 35, 20);
+    } catch {}
 
-  doc.setFontSize(14);
-  doc.text(PDF_TITLE, 105, 35, { align: "center" });
+    doc.setFontSize(14);
+    doc.text(PDF_TITLE, 105, 35, { align: "center" });
 
-  doc.setFontSize(12);
-  doc.text(`Tanggal: ${form.tanggal}`, 14, 50);
-  doc.text(`Wilayah: ${form.wilayah}`, 14, 56);
-  doc.text(`Area: ${form.area}`, 14, 62);
+    doc.setFontSize(12);
+    doc.text(`Tanggal: ${form.tanggal}`, 14, 50);
+    doc.text(`Wilayah: ${form.wilayah}`, 14, 56);
+    doc.text(`Area: ${form.area}`, 14, 62);
 
-  let y = 72;
-  for (const [i, t] of form.temuanList.entries()) {
-    if (y > 240) {
-      doc.addPage();
-      y = 20;
-    }
-
-    doc.setFontSize(13);
-    doc.text(`Temuan #${i + 1}`, 14, y);
-    y += 6;
-
-    const textX = 14;
-    const imageX = 140;
-    const textWidth = 90;
-    const imageWidth = 50;
-    const imageHeight = 45;
-    const lineHeight = 6;
-
-    const lines1 = doc.splitTextToSize(`Deskripsi: ${t.deskripsi}`, textWidth);
-    const lines2 = doc.splitTextToSize(`Tindakan: ${t.tindakan}`, textWidth);
-    const lines3 = doc.splitTextToSize(`Hasil: ${t.hasil}`, textWidth);
-    const lines4 = doc.splitTextToSize(`Koordinat: ${t.koordinat}`, textWidth);
-
-    const allLines = [...lines1, ...lines2, ...lines3, ...lines4];
-    const totalHeight = allLines.length * lineHeight;
-
-    let currentY = y;
-    doc.setFontSize(11);
-    doc.text(lines1, textX, currentY);
-    currentY += lines1.length * lineHeight;
-    doc.text(lines2, textX, currentY);
-    currentY += lines2.length * lineHeight;
-    doc.text(lines3, textX, currentY);
-    currentY += lines3.length * lineHeight;
-    doc.text(lines4, textX, currentY);
-    currentY += lines4.length * lineHeight;
-
-    if (t.fotoThumb) {
-      try {
-        // Letakkan gambar sejajar dengan posisi awal teks (y)
-        doc.addImage(t.fotoThumb, "JPEG", imageX, y, imageWidth, imageHeight);
-      } catch (err) {
-        doc.text("2 Gagal tampilkan gambar", imageX, y);
+    let y = 72;
+    for (const [i, t] of form.temuanList.entries()) {
+      if (y > 240) {
+        doc.addPage();
+        y = 20;
       }
+
+      doc.setFontSize(13);
+      doc.text(`Temuan #${i + 1}`, 14, y);
+      y += 6;
+
+      const textX = 14;
+      const imageX = 140;
+      const textWidth = 90;
+      const imageWidth = 50;
+      const imageHeight = 45;
+      const lineHeight = 6;
+
+      const lines1 = doc.splitTextToSize(`Deskripsi: ${t.deskripsi}`, textWidth);
+      const lines2 = doc.splitTextToSize(`Tindakan: ${t.tindakan}`, textWidth);
+      const lines3 = doc.splitTextToSize(`Hasil: ${t.hasil}`, textWidth);
+      const lines4 = doc.splitTextToSize(`Koordinat: ${t.koordinat}`, textWidth);
+
+      const allLines = [...lines1, ...lines2, ...lines3, ...lines4];
+      const totalHeight = allLines.length * lineHeight;
+
+      let currentY = y;
+      doc.setFontSize(11);
+      doc.text(lines1, textX, currentY); currentY += lines1.length * lineHeight;
+      doc.text(lines2, textX, currentY); currentY += lines2.length * lineHeight;
+      doc.text(lines3, textX, currentY); currentY += lines3.length * lineHeight;
+      doc.text(lines4, textX, currentY); currentY += lines4.length * lineHeight;
+
+      if (t.fotoThumb) {
+        try {
+          doc.addImage(t.fotoThumb, "JPEG", imageX, y, imageWidth, imageHeight);
+        } catch {
+          doc.text("Gagal tampilkan gambar", imageX, y);
+        }
+      }
+
+      y += Math.max(totalHeight, imageHeight) + 10;
     }
 
-    // Lanjutkan ke bawah berdasarkan yang lebih tinggi antara teks dan gambar
-    y += Math.max(totalHeight, imageHeight) + 10;
-  }
-
-  return doc.output("blob");
-};
-
-
-
-
+    return doc.output("blob");
+  };
 
   return (
     <Container className="py-3">
@@ -218,7 +205,7 @@ function Fasfield() {
               <Form.Control placeholder="Area" value={form.area} onChange={e => setForm({ ...form, area: e.target.value })} />
             </Form.Group>
             {form.temuanList.map((t, i) => (
-              <Card key={i} className={editMode && editIndex === i ? "mb-3 border-warning" : "mb-3"}>
+              <Card key={i} className="mb-3">
                 <Card.Body>
                   <Form.Group className="mb-2">
                     <Form.Control placeholder="Deskripsi" value={t.deskripsi} onChange={(e) => updateTemuan(i, "deskripsi", e.target.value)} />
@@ -263,6 +250,7 @@ function Fasfield() {
         <Col>
           <Button className="w-100" onClick={async () => {
             try {
+              const isEdit = editMode && form._index;
               for (let i = 0; i < form.temuanList.length; i++) {
                 const temuan = form.temuanList[i];
                 const payload = {
@@ -275,24 +263,22 @@ function Fasfield() {
                   hasil: temuan.hasil,
                   koordinat: temuan.koordinat
                 };
-
-                if (editMode && editIndex !== null) {
-                  payload.mode = "edit";
-                  payload.index = editIndex + 2;
+                if (isEdit) {
+                  payload.edit = "edit";
+                  payload.index = form._index;
                 }
-
                 const res = await axios.post(endpoint, new URLSearchParams(payload));
                 if (!res.data.ok) throw new Error(res.data.message);
               }
-              alert("✅ Data berhasil dikirim ke Google Sheets!");
-              localStorage.removeItem(LOCAL_KEY);
-              setForm({ tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli" });
+              alert(isEdit ? "✅ Data berhasil diedit!" : "✅ Data berhasil dikirim!");
+              setForm({ tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null });
               setEditMode(false);
-              setEditIndex(null);
             } catch (err) {
               alert("❌ Gagal kirim data: " + err.message);
             }
-          }}>{editMode ? "💾 Simpan Perubahan" : "📤 Kirim ke Google Sheets"}</Button>
+          }}>
+            {editMode ? "💾 Simpan Perubahan" : "📤 Kirim ke Google Sheets"}
+          </Button>
         </Col>
       </Row>
 
@@ -321,9 +307,7 @@ function Fasfield() {
             </thead>
             <tbody>
               {data.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="text-center">Belum ada data</td>
-                </tr>
+                <tr><td colSpan="9" className="text-center">Belum ada data</td></tr>
               ) : (
                 data.map((row, i) => (
                   <tr key={i}>
@@ -336,7 +320,7 @@ function Fasfield() {
                     <td>{row.hasil}</td>
                     <td>{row.koordinat}</td>
                     <td>
-                      <Button size="sm" variant="warning" onClick={() => handleEditTemuan(row, i)}>
+                      <Button size="sm" variant="warning" onClick={() => handleEditTemuan(row)}>
                         ✏️ Edit
                       </Button>
                     </td>
@@ -359,26 +343,23 @@ function Fasfield() {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setPreviewImage(null)}>Batal</Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              if (previewIndex !== null) {
-                setForm((p) => {
-                  const updatedList = [...p.temuanList];
-                  updatedList[previewIndex] = {
-                    ...updatedList[previewIndex],
-                    foto: previewImage.file,
-                    fotoThumb: previewImage.thumb,
-                    koordinat: previewImage.koordinat,
-                    statusGPS: " Lokasi berhasil diambil",
-                  };
-                  return { ...p, temuanList: updatedList };
-                });
-              }
-              setPreviewImage(null);
-              setPreviewIndex(null);
-            }}
-          >Gunakan</Button>
+          <Button variant="primary" onClick={() => {
+            if (previewIndex !== null) {
+              setForm((p) => {
+                const updatedList = [...p.temuanList];
+                updatedList[previewIndex] = {
+                  ...updatedList[previewIndex],
+                  foto: previewImage.file,
+                  fotoThumb: previewImage.thumb,
+                  koordinat: previewImage.koordinat,
+                  statusGPS: " Lokasi berhasil diambil",
+                };
+                return { ...p, temuanList: updatedList };
+              });
+            }
+            setPreviewImage(null);
+            setPreviewIndex(null);
+          }}>Gunakan</Button>
         </Modal.Footer>
       </Modal>
     </Container>
