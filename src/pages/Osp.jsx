@@ -61,7 +61,7 @@ function Osp() {
 
   const fetchData = async () => {
     try {
-      const { data } = await axios.get(`${endpoint}?sheet=maintenance&mode=read`);
+      const { data } = await axios.get(`${endpoint}?sheet=maintenance`);
       setRows(data.records || []);
     } catch (e) {
       console.error(e); setError("Gagal memuat data");
@@ -98,11 +98,15 @@ function Osp() {
     const body = new URLSearchParams();
     body.append("sheet", "maintenance");
     if (isEdit && index !== null) {
-      body.append("mode", "edit");
+      body.append("edit", "edit"); // ✅ Perubahan penting di sini
       body.append("index", index);
     }
     FIELDS_TO_SEND.forEach(k => body.append(k, data[k] ?? ""));
-    const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+    const r = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
     const j = await r.json(); if (!j.ok) throw new Error(j.message || "GAS error");
   };
 
@@ -158,6 +162,7 @@ function Osp() {
       <h4 className="mb-3">Gangguan / Durasi OSP</h4>
       {error && <div className="alert alert-danger">{error}</div>}
 
+      {/* Form Input */}
       <Card className="p-4 shadow-sm mb-4">
         <Form onSubmit={submit}>
           <Row className="g-3 mb-3">
@@ -194,71 +199,31 @@ function Osp() {
             <Col xs={12} md={6}><Form.Label>Nomor Ticket</Form.Label><Form.Control name="nomor_ticket" value={form.nomor_ticket} onChange={update} /></Col>
           </Row>
 
-          {/* FOTO 1 */}
           <Row className="g-3 mb-3">
-            <Col xs={12} md={6}>
-              <Form.Label>Upload Foto 1</Form.Label>
-              <div className="d-flex gap-2">
-                <Button variant="primary" onClick={() => document.getElementById('camera1').click()}> Kamera</Button>
-                <Button variant="secondary" onClick={() => document.getElementById('gallery1').click()}> Galeri</Button>
-              </div>
-              <input
-                id="camera1"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style={{ display: 'none' }}
-                onChange={e => e.target.files.length && geo("latlong")}
-              />
-              <input
-                id="gallery1"
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={e => e.target.files.length && geo("latlong")}
-              />
+            <Col xs={12} md={6}><Form.Label>Upload Foto 1</Form.Label><div className="d-flex gap-2">
+              <Button onClick={() => document.getElementById('camera1').click()}>Kamera</Button>
+              <Button onClick={() => document.getElementById('gallery1').click()}>Galeri</Button></div>
+              <input id="camera1" type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => geo("latlong")} />
+              <input id="gallery1" type="file" accept="image/*" style={{ display: 'none' }} onChange={e => geo("latlong")} />
             </Col>
-            <Col xs={12} md={6}>
-              <Form.Label>Lat,Long 1</Form.Label>
-              <Form.Control value={form.latlong} readOnly />
-            </Col>
+            <Col xs={12} md={6}><Form.Label>Lat,Long 1</Form.Label><Form.Control value={form.latlong} readOnly /></Col>
           </Row>
 
-          {/* FOTO 2 */}
           <Row className="g-3 mb-3">
-            <Col xs={12} md={6}>
-              <Form.Label>Upload Foto 2</Form.Label>
-              <div className="d-flex gap-2">
-                <Button variant="primary" onClick={() => document.getElementById('camera2').click()}> Kamera</Button>
-                <Button variant="secondary" onClick={() => document.getElementById('gallery2').click()}> Galeri</Button>
-              </div>
-              <input
-                id="camera2"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style={{ display: 'none' }}
-                onChange={e => e.target.files.length && geo("latlong2")}
-              />
-              <input
-                id="gallery2"
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={e => e.target.files.length && geo("latlong2")}
-              />
+            <Col xs={12} md={6}><Form.Label>Upload Foto 2</Form.Label><div className="d-flex gap-2">
+              <Button onClick={() => document.getElementById('camera2').click()}>Kamera</Button>
+              <Button onClick={() => document.getElementById('gallery2').click()}>Galeri</Button></div>
+              <input id="camera2" type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => geo("latlong2")} />
+              <input id="gallery2" type="file" accept="image/*" style={{ display: 'none' }} onChange={e => geo("latlong2")} />
             </Col>
-            <Col xs={12} md={6}>
-              <Form.Label>Lat,Long 2</Form.Label>
-              <Form.Control value={form.latlong2} readOnly />
-            </Col>
+            <Col xs={12} md={6}><Form.Label>Lat,Long 2</Form.Label><Form.Control value={form.latlong2} readOnly /></Col>
           </Row>
-
 
           <Row><Col md={3}><Button type="submit" className="w-100" disabled={loading}>{loading ? "Mengirim…" : "Tambah"}</Button></Col></Row>
         </Form>
       </Card>
 
+      {/* Table */}
       <div className="table-responsive">
         <Table striped bordered hover size="sm" className="align-middle text-nowrap">
           <thead><tr>{["No", "Tanggal", "User Start", "User End", "Durasi User", "Ticket Start", "Ticket End", "Durasi Ticket", "Problem", "Action", "PIC", "Nomor Ticket", ""].map(h => <th key={h}>{h}</th>)}</tr></thead>

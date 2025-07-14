@@ -125,41 +125,81 @@ function Fasfield() {
       return { ...p, temuanList: l };
     });
 
-  const generatePDFBlob = async () => {
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    doc.setFont("times", "");
-    try {
-      const img = new Image();
-      img.src = logoURL;
-      await new Promise((resolve) => { img.onload = () => resolve(); });
-      doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch {}
-    doc.setFontSize(14);
-    doc.text(PDF_TITLE, 105, 35, { align: "center" });
+ const generatePDFBlob = async () => {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  doc.setFont("times", "");
 
-    doc.text(`Tanggal: ${form.tanggal}`, 14, 50);
-    doc.text(`Wilayah: ${form.wilayah}`, 14, 56);
-    doc.text(`Area: ${form.area}`, 14, 62);
+  try {
+    const img = new Image();
+    img.src = logoURL;
+    await new Promise((resolve) => { img.onload = () => resolve(); });
+    doc.addImage(img, "JPEG", 88, 10, 35, 20);
+  } catch {}
 
-    let y = 72;
-    for (const [i, t] of form.temuanList.entries()) {
-      if (y > 250) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(`Temuan #${i + 1}`, 14, y);
-      y += 6;
-      doc.text(`Deskripsi: ${t.deskripsi}`, 14, y);
-      y += 6;
-      doc.text(`Tindakan: ${t.tindakan}`, 14, y);
-      y += 6;
-      doc.text(`Hasil: ${t.hasil}`, 14, y);
-      y += 6;
-      doc.text(`Koordinat: ${t.koordinat}`, 14, y);
-      y += 10;
+  doc.setFontSize(14);
+  doc.text(PDF_TITLE, 105, 35, { align: "center" });
+
+  doc.setFontSize(12);
+  doc.text(`Tanggal: ${form.tanggal}`, 14, 50);
+  doc.text(`Wilayah: ${form.wilayah}`, 14, 56);
+  doc.text(`Area: ${form.area}`, 14, 62);
+
+  let y = 72;
+  for (const [i, t] of form.temuanList.entries()) {
+    if (y > 240) {
+      doc.addPage();
+      y = 20;
     }
-    return doc.output("blob");
-  };
+
+    doc.setFontSize(13);
+    doc.text(`Temuan #${i + 1}`, 14, y);
+    y += 6;
+
+    const textX = 14;
+    const imageX = 140;
+    const textWidth = 90;
+    const imageWidth = 50;
+    const imageHeight = 45;
+    const lineHeight = 6;
+
+    const lines1 = doc.splitTextToSize(`Deskripsi: ${t.deskripsi}`, textWidth);
+    const lines2 = doc.splitTextToSize(`Tindakan: ${t.tindakan}`, textWidth);
+    const lines3 = doc.splitTextToSize(`Hasil: ${t.hasil}`, textWidth);
+    const lines4 = doc.splitTextToSize(`Koordinat: ${t.koordinat}`, textWidth);
+
+    const allLines = [...lines1, ...lines2, ...lines3, ...lines4];
+    const totalHeight = allLines.length * lineHeight;
+
+    let currentY = y;
+    doc.setFontSize(11);
+    doc.text(lines1, textX, currentY);
+    currentY += lines1.length * lineHeight;
+    doc.text(lines2, textX, currentY);
+    currentY += lines2.length * lineHeight;
+    doc.text(lines3, textX, currentY);
+    currentY += lines3.length * lineHeight;
+    doc.text(lines4, textX, currentY);
+    currentY += lines4.length * lineHeight;
+
+    if (t.fotoThumb) {
+      try {
+        // Letakkan gambar sejajar dengan posisi awal teks (y)
+        doc.addImage(t.fotoThumb, "JPEG", imageX, y, imageWidth, imageHeight);
+      } catch (err) {
+        doc.text("2 Gagal tampilkan gambar", imageX, y);
+      }
+    }
+
+    // Lanjutkan ke bawah berdasarkan yang lebih tinggi antara teks dan gambar
+    y += Math.max(totalHeight, imageHeight) + 10;
+  }
+
+  return doc.output("blob");
+};
+
+
+
+
 
   return (
     <Container className="py-3">

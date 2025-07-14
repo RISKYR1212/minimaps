@@ -19,12 +19,11 @@ const Material = () => {
   const [data, setData] = useState([]);
   const [form, setForm] = useState({
     date: "", pic: "", site: "", material: "", unit: "",
-    saldoAwal: "", terpakai: "", dismantle: ""
+    saldoAwal: "", terpakai: "", dismantle: "", _index: null
   });
 
   const [editMode, setEditMode] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
-  const [loading, setLoading] = useState(false); // <-- tambah loading
+  const [loading, setLoading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -47,7 +46,7 @@ const Material = () => {
   };
 
   const handleAdd = async () => {
-    const { date, pic, site, material, unit, saldoAwal, terpakai, dismantle } = form;
+    const { date, pic, site, material, unit, saldoAwal, terpakai, dismantle, _index } = form;
     if (!date || !pic || !site || !material || !unit || saldoAwal === "" || terpakai === "") {
       alert("Mohon lengkapi semua kolom wajib!");
       return;
@@ -60,9 +59,9 @@ const Material = () => {
       saldoAwal, terpakai, sisa, dismantle
     };
 
-    if (editMode && editIndex !== null) {
+    if (editMode && _index) {
       payload.edit = "edit";
-      payload.index = editIndex + 2;
+      payload.index = _index;
     }
 
     setLoading(true);
@@ -78,10 +77,9 @@ const Material = () => {
         fetchData();
         setForm({
           date: "", pic: "", site: "", material: "", unit: "",
-          saldoAwal: "", terpakai: "", dismantle: ""
+          saldoAwal: "", terpakai: "", dismantle: "", _index: null
         });
         setEditMode(false);
-        setEditIndex(null);
         alert(editMode ? "✅ Data berhasil diedit!" : "✅ Data berhasil ditambahkan!");
       } else {
         alert("❌ Gagal menyimpan data ke Sheet");
@@ -213,10 +211,10 @@ const Material = () => {
                           unit: item.unit,
                           saldoAwal: item.saldoAwal,
                           terpakai: item.terpakai,
-                          dismantle: item.dismantle || ""
+                          dismantle: item.dismantle || "",
+                          _index: item._index // Gunakan ini untuk update!
                         });
                         setEditMode(true);
-                        setEditIndex(i);
                       }}
                     >
                       Edit
