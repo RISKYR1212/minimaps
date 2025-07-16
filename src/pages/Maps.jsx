@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup, useMap } from 'react-leaflet';
+import React, { useState, useEffect } from 'react';
+import {
+  MapContainer, TileLayer, Marker, Popup, Polyline, LayerGroup, useMap
+} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Card, Form, Button, Alert } from 'react-bootstrap';
+import { Button, Form } from 'react-bootstrap';
 import * as toGeoJSON from '@tmcw/togeojson';
 import JSZip from 'jszip';
 
-// Fix Leaflet icons
+// Fix leaflet icon
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -17,123 +19,87 @@ L.Icon.Default.mergeOptions({
 function FlyToLocation({ location }) {
   const map = useMap();
   useEffect(() => {
-    if (location) {
-      map.flyTo(location, 18, { duration: 1, easeLinearity: 0.25 });
-    }
+    if (location) map.flyTo(location, 18, { duration: 1 });
   }, [location, map]);
   return null;
 }
 
-function SearchLocationHandler({ query, onFound }) {
-  const map = useMap();
-  useEffect(() => {
-    const fetchLocation = async () => {
-      if (!query) return;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        if (data?.length > 0) {
-          const loc = data[0];
-          const latlng = [parseFloat(loc.lat), parseFloat(loc.lon)];
-          onFound(latlng);
-        } else {
-          alert('Lokasi tidak ditemukan.');
-        }
-      } catch (err) {
-        alert('Terjadi kesalahan saat mencari lokasi.');
-        console.error(err);
-      }
-    };
-    const timer = setTimeout(fetchLocation, 500);
-    return () => clearTimeout(timer);
-  }, [query, map, onFound]);
-  return null;
-}
-
-const encodeLayers = (layers) => {
-  const simplified = layers.map(layer => ({ n: layer.name, v: layer.visible, c: layer.color, m: layer.markers, p: layer.polylines }));
-  return encodeURIComponent(JSON.stringify(simplified));
-};
-
-const decodeLayers = (encoded) => {
-  try {
-    const decoded = JSON.parse(decodeURIComponent(encoded));
-    return decoded.map(layer => ({ name: layer.n || 'Layer', visible: layer.v !== undefined ? layer.v : true, color: layer.c || '#ff0000', markers: layer.m || [], polylines: layer.p || [] }));
-  } catch {
-    return [{ name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }];
-  }
-};
-
-const escapeXml = (str) => {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
-};
-
 function Maps() {
   const defaultLocation = [-6.511809, 106.8128];
-  const [inputLocation, setInputLocation] = useState('');
-  const [locationQuery, setLocationQuery] = useState('');
   const [foundMarker, setFoundMarker] = useState(null);
-  const [sidebarVisible, setSidebarVisible] = useState(false); // default: false di mobile, true di desktop via effect
-  const [layerFilter, setLayerFilter] = useState('');
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
-  const [geoError, setGeoError] = useState(null);
-  const fileInputRefs = useRef([]);
-  const [layers, setLayers] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlLayers = params.get('layers');
-    if (urlLayers) return decodeLayers(urlLayers);
-    const saved = localStorage.getItem('layersData');
-    if (saved) {
-      try { return JSON.parse(saved); }
-      catch { return [{ name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }]; }
-    }
-    return [{ name: 'Layer 1', visible: true, markers: [], polylines: [], color: '#ff0000' }];
-  });
+  const [layers, setLayers] = useState([]);
+  const [zoomToLayer, setZoomToLayer] = useState(null);
+  const [driveFiles, setDriveFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Detect screen size and set default sidebarVisible
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) setSidebarVisible(true);
-      else setSidebarVisible(false);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const saved = localStorage.getItem('map_layers');
+    if (saved) setLayers(JSON.parse(saved));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('layersData', JSON.stringify(layers));
-    const params = new URLSearchParams(window.location.search);
-    params.set('layers', encodeLayers(layers));
-    window.history.replaceState(null, '', `?${params.toString()}`);
+    const simplifiedLayers = layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      visible: layer.visible,
+      type: layer.type,
+    }));
+    localStorage.setItem('map_layers', JSON.stringify(simplifiedLayers));
   }, [layers]);
 
-  const parseFile = async (file, idx) => {
+  const fetchFileList = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/files');
+      const files = await res.json();
+      setDriveFiles(files);
+    } catch (err) {
+      console.error('Gagal ambil daftar file dari backend:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFileById = async (fileId, fileName) => {
+    try {
+      const res = await fetch(`http://localhost:5000/download/${fileId}`);
+      if (!res.ok) throw new Error(`Gagal fetch file ID: ${fileId}`);
+      const blob = await res.blob();
+      const fileObj = new File([blob], fileName, { type: blob.type });
+      await parseFile(fileObj);
+    } catch (err) {
+      console.error(`Gagal muat file ${fileId}:`, err);
+    }
+  };
+
+  const parseFile = async (file) => {
     try {
       let content = '';
       if (file.name.toLowerCase().endsWith('.kmz')) {
         const buffer = await file.arrayBuffer();
         const zip = await JSZip.loadAsync(buffer);
         const kmlEntry = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
-        if (!kmlEntry) throw new Error('KMZ tidak mengandung file .kml');
+        if (!kmlEntry) throw new Error('KMZ tidak mengandung .kml');
         content = await zip.file(kmlEntry).async('text');
       } else {
         content = await file.text();
       }
+
       const kmlDom = new DOMParser().parseFromString(content, 'text/xml');
       const geojson = toGeoJSON.kml(kmlDom);
-      updateLayer(geojson, file.name.replace(/\.(kml|kmz)$/i, ''), idx);
+      updateLayer(geojson, file.name.replace(/\.(kml|kmz)$/i, ''));
     } catch (err) {
-      alert(`Gagal membuka file ${file.name}: ${err.message}`);
-      console.error('Gagal memproses file:', err);
+      console.error(`Gagal parsing file ${file.name}:`, err);
     }
   };
 
-  const updateLayer = (geojson, name, idx) => {
-    const markers = [];
-    const polylines = [];
+  const updateLayer = (geojson, name) => {
+    const markers = [], polylines = [];
+
     geojson.features?.forEach((feature, i) => {
+      if (!feature.geometry) return;
       const label = feature.properties?.name || `${feature.geometry.type} ${i + 1}`;
       if (feature.geometry.type === 'Point') {
         const [lng, lat] = feature.geometry.coordinates;
@@ -143,238 +109,156 @@ function Maps() {
         polylines.push({ positions: coords, label });
       }
     });
-    setLayers(prev => {
-      const newLayers = [...prev];
-      newLayers[idx] = { ...newLayers[idx], name, markers, polylines };
-      return newLayers;
-    });
+
+    const isSplittable = /tiang|odp/i.test(name);
+    const chunkSize = 1000;
+
+    if (isSplittable && markers.length > chunkSize) {
+      for (let i = 0; i < markers.length; i += chunkSize) {
+        const chunk = markers.slice(i, i + chunkSize);
+        const chunkName = `${name} (${i / chunkSize + 1})`;
+        const color = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+        setLayers(prev => [...prev, {
+          name: chunkName,
+          visible: false,
+          color,
+          markers: chunk,
+          polylines: i === 0 ? polylines : []
+        }]);
+      }
+    } else {
+      const color = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+      setLayers(prev => [...prev, { name, visible: false, color, markers, polylines }]);
+    }
   };
 
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setGeoError('Geolokasi tidak didukung oleh browser Anda.');
-      return;
-    }
-    setGeoError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newLocation = [latitude, longitude];
-        setUserLocation(newLocation);
-        setFoundMarker(newLocation);
-      },
-      (error) => {
-        const messages = {
-          1: 'Izin lokasi ditolak.',
-          2: 'Informasi lokasi tidak tersedia.',
-          3: 'Permintaan lokasi habis waktu.'
-        };
-        setGeoError(messages[error.code] || 'Terjadi kesalahan saat mendapatkan lokasi.');
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+  const handleExport = (format, layer) => {
+    const geojson = {
+      type: 'FeatureCollection',
+      features: []
+    };
+
+    layer.markers.forEach(({ lat, lng, label }) => {
+      geojson.features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lng, lat] },
+        properties: { name: label }
+      });
+    });
+
+    layer.polylines.forEach(({ positions, label }) => {
+      geojson.features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: positions.map(([lat, lng]) => [lng, lat])
+        },
+        properties: { name: label }
+      });
+    });
+
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${layer.name}.${format}.geojson`;
+    link.click();
   };
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
-      {/* Toggle Button */}
-      <Button
-        size="sm"
-        variant="primary"
-        onClick={() => setSidebarVisible(!sidebarVisible)}
-        style={{
-          position: 'absolute',
-          top: 12,
-          left: 12,
-          zIndex: 1200,
-          borderRadius: '0.375rem',
-          padding: '0.25rem 0.5rem',
-          minWidth: '110px',
-        }}
-        aria-label={sidebarVisible ? 'Sembunyikan Sidebar' : 'Tampilkan Sidebar'}
-      >
+      <Button size="sm" variant="primary" onClick={() => setSidebarVisible(!sidebarVisible)} style={{ position: 'absolute', top: 12, left: 12, zIndex: 1200 }}>
         {sidebarVisible ? 'Sembunyikan Sidebar' : 'Tampilkan Sidebar'}
       </Button>
 
-      {/* Sidebar */}
-      <div
-        className="map-sidebar"
-        style={{
-          position: window.innerWidth < 768 ? 'fixed' : 'absolute',
-          top: 50,
-          left: sidebarVisible ? 0 : '-320px',
-          width: 320,
-          maxHeight: 'calc(100vh - 60px)',
-          overflowY: 'auto',
-          backgroundColor: '#f8f9fa',
-          boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
-          zIndex: 1100,
-          transition: 'left 0.3s ease-in-out',
-          padding: '1rem',
-          fontSize: '0.9rem',
-          borderRight: '1px solid #ddd',
-        }}
-      >
-        <h5>Kontrol Peta</h5>
+      <Button size="sm" variant="info" onClick={fetchFileList} style={{ position: 'absolute', top: 12, left: 180, zIndex: 1200 }}>
+        Lihat File dari Drive
+      </Button>
 
-        {/* Cari Lokasi */}
-        <Form.Group controlId="searchLocation" className="mb-3">
-          <Form.Label>Cari Lokasi</Form.Label>
-          <Form.Control
-            type="search"
-            placeholder="Ketik lokasi..."
-            value={inputLocation}
-            onChange={e => setInputLocation(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                setLocationQuery(inputLocation);
-              }
-            }}
-          />
-          <Button
-            size="sm"
-            className="mt-2"
-            onClick={() => setLocationQuery(inputLocation)}
-          >
-            Cari
-          </Button>
-        </Form.Group>
-
-        {/* Geolocation */}
-        <div className="mb-3">
-          <Button variant="outline-success" size="sm" onClick={getCurrentLocation}>
-            Cari Lokasi Saya
-          </Button>
-          {geoError && <Alert variant="danger" className="mt-2 p-1">{geoError}</Alert>}
+      {loading && (
+        <div style={{ position: 'absolute', top: 60, left: 12, background: '#fff', padding: 10, border: '1px solid #ccc', zIndex: 1300 }}>
+          Memuat daftar file dari Google Drive...
         </div>
+      )}
 
-        {/* Filter Layer */}
-        <Form.Group controlId="filterLayers" className="mb-3">
-          <Form.Label>Filter Layer (Nama)</Form.Label>
-          <Form.Control
-            type="text"
-            placeholder="Filter..."
-            value={layerFilter}
-            onChange={e => setLayerFilter(e.target.value)}
-          />
-        </Form.Group>
+      {sidebarVisible && (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: 320, height: '100%', background: '#f8f9fa', zIndex: 1100, overflowY: 'auto', padding: 12 }}>
+          <h5>Daftar Layer</h5>
 
-        {/* List Layers */}
-        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-          {layers.filter(l => l.name.toLowerCase().includes(layerFilter.toLowerCase())).map((layer, i) => (
-            <Card
-              key={i}
-              className="mb-2"
-              style={{ borderLeft: `4px solid ${layer.color}`, cursor: 'default' }}
-            >
-              <Card.Body style={{ padding: '0.5rem 1rem' }}>
-                <Form.Check
-                  type="checkbox"
-                  id={`layer-visibility-${i}`}
-                  label={layer.name}
-                  checked={layer.visible}
-                  onChange={e => {
-                    const newLayers = [...layers];
-                    newLayers[i].visible = e.target.checked;
-                    setLayers(newLayers);
+          {driveFiles.map((file) => (
+            <div key={file.id} style={{ marginBottom: 8 }}>
+              <div className="d-flex justify-content-between align-items-center">
+                <span>{file.name}</span>
+                <Button size="sm" onClick={() => loadFileById(file.id, file.name)}>Muat</Button>
+              </div>
+            </div>
+          ))}
+
+          <hr />
+          {layers.map((layer, i) => (
+            <div key={layer.name + i} style={{ marginBottom: 12, borderBottom: '1px solid #ccc', paddingBottom: 8 }}>
+              <Form.Check
+                type="checkbox"
+                checked={layer.visible}
+                label={layer.name}
+                onChange={() => {
+                  setLayers(prev =>
+                    prev.map((l, idx) => idx === i ? { ...l, visible: !l.visible } : l)
+                  );
+                }}
+              />
+              <div className="d-flex align-items-center mt-1">
+                <input
+                  type="color"
+                  value={layer.color}
+                  onChange={(e) => {
+                    setLayers(prev =>
+                      prev.map((l, idx) => idx === i ? { ...l, color: e.target.value } : l)
+                    );
                   }}
                 />
-              </Card.Body>
-            </Card>
+                <Button size="sm" variant="outline-secondary" className="ms-2" onClick={() => setZoomToLayer(i)}>Zoom</Button>
+                <Button size="sm" variant="outline-success" className="ms-2" onClick={() => handleExport('layer', layer)}>Export</Button>
+              </div>
+              <small className="text-muted">{layer.markers.length} titik, {layer.polylines.length} garis</small>
+            </div>
           ))}
         </div>
+      )}
 
-        {/* Import File */}
-        <Form.Group controlId="importFiles" className="mb-3">
-          <Form.Label>Impor File KML / KMZ per Layer</Form.Label>
-          {layers.map((layer, i) => (
-            <Form.Control
-              key={`file-input-${i}`}
-              type="file"
-              accept=".kml,.kmz"
-              className="mb-2"
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) parseFile(file, i);
-                e.target.value = null;
-              }}
-              aria-label={`Upload file untuk layer ${layer.name}`}
-            />
-          ))}
-        </Form.Group>
-
-        {/* Tambah Layer */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setLayers(prev => [...prev, { name: `Layer ${prev.length + 1}`, visible: true, markers: [], polylines: [], color: '#' + Math.floor(Math.random() * 16777215).toString(16) }])}
-          className="w-100"
-        >
-          Tambah Layer
-        </Button>
-      </div>
-
-      {/* Map */}
       <MapContainer
         center={defaultLocation}
         zoom={14}
-        scrollWheelZoom={true}
-        style={{
-          height: '100vh',
-          width: '100%',
-          marginLeft: window.innerWidth < 768 ? 0 : (sidebarVisible ? 320 : 0),
-          transition: 'margin-left 0.3s ease-in-out'
-        }}
+        scrollWheelZoom
+        style={{ height: '100vh', width: '100%', marginLeft: sidebarVisible ? 320 : 0, transition: 'margin-left 0.3s' }}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-        {/* User Location */}
-        {userLocation && (
-          <Marker position={userLocation}>
-            <Popup>Lokasi Saya</Popup>
-          </Marker>
-        )}
+        <FlyToLocation location={
+          zoomToLayer !== null
+            ? (layers[zoomToLayer]?.markers[0] || layers[zoomToLayer]?.polylines[0]?.positions[0])
+            : foundMarker || userLocation
+        } />
 
-        {/* Marker hasil pencarian */}
-        {foundMarker && (
-          <Marker position={foundMarker}>
-            <Popup>Hasil Pencarian</Popup>
-          </Marker>
-        )}
-
-        {/* FlyTo */}
-        <FlyToLocation location={foundMarker || userLocation} />
-
-        {/* Render Layers */}
-        {layers.map((layer, i) => (
-          layer.visible && (
-            <LayerGroup key={i}>
-              {layer.markers.map((marker, idx) => (
-                <Marker key={idx} position={[marker.lat, marker.lng]}>
-                  <Popup>{marker.label}</Popup>
-                </Marker>
-              ))}
-              {layer.polylines.map((pline, idx) => (
-                <Polyline
-                  key={idx}
-                  positions={pline.positions}
-                  color={layer.color}
-                  weight={4}
-                  opacity={0.8}
-                >
-                  <Popup>{pline.label}</Popup>
-                </Polyline>
-              ))}
-            </LayerGroup>
-          )
+        {layers.map((layer, i) => layer.visible && (
+          <LayerGroup key={layer.name + i}>
+            {layer.markers.map((marker, idx) => (
+              <Marker key={idx} position={[marker.lat, marker.lng]}>
+                <Popup>{marker.label}</Popup>
+              </Marker>
+            ))}
+            {layer.polylines.map((pline, idx) => (
+              <Polyline
+                key={idx}
+                positions={pline.positions}
+                color={layer.color}
+                weight={4}
+                opacity={0.8}
+              >
+                <Popup>{pline.label}</Popup>
+              </Polyline>
+            ))}
+          </LayerGroup>
         ))}
-
-        {/* Search location handler */}
-        <SearchLocationHandler query={locationQuery} onFound={setFoundMarker} />
       </MapContainer>
     </div>
   );
