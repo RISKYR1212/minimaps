@@ -1,57 +1,63 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // Gunakan node-fetch v2 untuk Node v18 ke bawah
+
 const app = express();
 const PORT = 5000;
 
-// Ganti dengan folder dan API key kamu
 const FOLDER_ID = '1KCFDCsSPbt9YQC9C58XpHLV4ba7Cdyip';
-const API_KEY = 'AIzaSyC2RxMT7BR6UYOmn5ZtG3dTS0q7Mm9QUcg';
+const API_KEY = 'AIzaSyAxbag1H3t6LCEorrwtzPyaVhSgAzvqgwA'; // Ganti dengan API Key kamu
 
-app.use(cors());
+// Middleware
+app.use(cors({
+  origin: 'http://localhost:5173' // frontend origin
+}));
 
-// Endpoint untuk mengambil daftar file dari folder Drive
+// Mendapatkan daftar file dari Google Drive folder
 app.get('/files', async (req, res) => {
-  const query = `'${FOLDER_ID}' in parents and (mimeType='application/vnd.google-earth.kml+xml' or name contains '.kmz')`;
-  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&key=${API_KEY}`;
+  const query = `'${FOLDER_ID}' in parents and (mimeType='application/vnd.google-earth.kml+xml' or name contains '.kmz') and trashed = false`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,mimeType,modifiedTime)&key=${API_KEY}`;
 
   try {
     const response = await fetch(url);
-    const data = await response.json();
-
-    if (!response.ok || !data.files) {
-      console.error('Gagal ambil daftar file:', data);
-      return res.status(500).json({ error: 'Gagal ambil daftar file dari Google Drive' });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Gagal mengambil data dari Google Drive' });
     }
 
-    res.json(data.files);
+    const data = await response.json();
+    res.json(data.files || []);
   } catch (err) {
     console.error('Error fetch files:', err);
     res.status(500).json({ error: 'Gagal mengambil data dari Google Drive' });
   }
 });
 
-// Endpoint untuk mengunduh file berdasarkan ID (menggunakan Google Drive API resmi)
+// Mengunduh file berdasarkan ID
 app.get('/download/:id', async (req, res) => {
   const fileId = req.params.id;
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${API_KEY}`;
+  const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
   try {
     const response = await fetch(url);
-
     if (!response.ok) {
-      console.error(`Gagal unduh file ${fileId}, status: ${response.status}`);
-      return res.status(400).json({ error: 'Gagal unduh file dari Google Drive' });
+      return res.status(response.status).json({ error: 'Gagal mengunduh file' });
     }
 
-    res.setHeader('Content-Type', response.headers.get('content-type'));
-    response.body.pipe(res);
+    // Forward stream data ke client
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment');
+
+    if (response.body) {
+      response.body.pipe(res);
+    } else {
+      res.status(500).json({ error: 'Tidak ada data untuk diunduh' });
+    }
   } catch (err) {
-    console.error('Error saat mengunduh file:', err);
-    res.status(500).json({ error: 'Gagal mengunduh file dari Google Drive' });
+    console.error('Error download:', err);
+    res.status(500).json({ error: 'Gagal mengunduh file' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(` Proxy server aktif di http://localhost:${PORT}`);
+  console.log(`Server proxy aktif di http://localhost:${PORT}`);
 });

@@ -252,6 +252,20 @@ function Maps() {
           ))}
         </div>
       )}
+      <Button
+        size="sm"
+        variant="success"
+        onClick={() => {
+          if (userLocation) {
+            setFoundMarker(userLocation);
+          } else {
+            alert("Lokasi belum tersedia.");
+          }
+        }}
+        style={{ position: 'absolute', top: 12, left: 320, zIndex: 1200 }}
+      >
+        Titik Saya
+      </Button>
 
       <Button size="sm" variant="primary" onClick={() => setSidebarVisible(!sidebarVisible)} style={{ position: 'absolute', top: 12, left: 12, zIndex: 1200 }}>
         {sidebarVisible ? 'Sembunyikan Sidebar' : 'Tampilkan Sidebar'}
@@ -275,7 +289,7 @@ function Maps() {
       >
         <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-        <FlyToLocation location={foundMarker || userLocation} />
+        <FlyToLocation key={JSON.stringify(foundMarker)} location={foundMarker} />
 
         {userLocation && (
           <Marker position={userLocation} icon={L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/61/61168.png', iconSize: [25, 25] })}>
