@@ -10,8 +10,9 @@ const API_KEY = 'AIzaSyAxbag1H3t6LCEorrwtzPyaVhSgAzvqgwA'; // Ganti dengan API K
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173' // frontend origin
+  origin: ['http://localhost:5173', 'http://192.168.10.11:5173']
 }));
+
 
 // Mendapatkan daftar file dari Google Drive folder
 app.get('/files', async (req, res) => {
@@ -59,6 +60,7 @@ app.get('/download/:id', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server proxy aktif di http://0.0.0.0:${PORT}`);
+  console.log(`Server aktif di http://${require('os').networkInterfaces()['Wi-Fi'][0].address}:${PORT}`);
 });
+
 

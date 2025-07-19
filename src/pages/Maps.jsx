@@ -105,7 +105,7 @@ function Maps() {
  const fetchFileList = async () => {
   setLoading(true);
   try {
-    const res = await fetch('http://localhost:5000/files');
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/files`);
     const data = await res.json();
 
     // Periksa apakah hasilnya array
@@ -128,7 +128,7 @@ function Maps() {
 
   const loadFileById = async (fileId, fileName) => {
     try {
-      const res = await fetch(`http://localhost:5000/download/${fileId}`);
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/download/${fileId}`);
       if (!res.ok) throw new Error(`Gagal fetch file ID: ${fileId}`);
       const blob = await res.blob();
       const fileObj = new File([blob], fileName, { type: blob.type });
