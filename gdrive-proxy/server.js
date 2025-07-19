@@ -58,6 +58,7 @@ app.get('/download/:id', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server proxy aktif di http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server proxy aktif di http://0.0.0.0:${PORT}`);
 });
+
