@@ -102,18 +102,29 @@ function Maps() {
     };
   }, [navigationTarget]);
 
-  const fetchFileList = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('http://localhost:5000/files');
-      const files = await res.json();
-      setDriveFiles(files);
-    } catch (err) {
-      console.error('Gagal ambil daftar file dari backend:', err);
-    } finally {
-      setLoading(false);
+ const fetchFileList = async () => {
+  setLoading(true);
+  try {
+    const res = await fetch('http://localhost:5000/files');
+    const data = await res.json();
+
+    // Periksa apakah hasilnya array
+    if (Array.isArray(data)) {
+      setDriveFiles(data);
+    } else if (data.files && Array.isArray(data.files)) {
+      setDriveFiles(data.files);
+    } else {
+      console.error("Respon tidak sesuai format:", data);
+      setDriveFiles([]); // fallback
     }
-  };
+  } catch (err) {
+    console.error('Gagal ambil daftar file dari backend:', err);
+    setDriveFiles([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const loadFileById = async (fileId, fileName) => {
     try {
