@@ -21,9 +21,9 @@ const Material = () => {
     date: "", pic: "", site: "", material: "", unit: "",
     saldoAwal: "", terpakai: "", dismantle: "", _index: null
   });
-
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchData = async () => {
     try {
@@ -91,6 +91,10 @@ const Material = () => {
       setLoading(false);
     }
   };
+
+  const filteredData = data.filter(item =>
+    item.pic?.toLowerCase().includes(searchTerm)
+  );
 
   return (
     <Container className="py-5">
@@ -168,6 +172,16 @@ const Material = () => {
       </Card>
 
       <Card className="p-4">
+        {/* Input pencarian berdasarkan PIC */}
+        <Form.Group className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="🔍 Cari berdasarkan nama PIC (tim)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+          />
+        </Form.Group>
+
         <Table striped bordered hover responsive>
           <thead>
             <tr>
@@ -184,10 +198,10 @@ const Material = () => {
             </tr>
           </thead>
           <tbody>
-            {data.length === 0 ? (
-              <tr><td colSpan="10" className="text-center">Belum ada data</td></tr>
+            {filteredData.length === 0 ? (
+              <tr><td colSpan="10" className="text-center">Tidak ditemukan data PIC yang cocok</td></tr>
             ) : (
-              data.map((item, i) => (
+              filteredData.map((item, i) => (
                 <tr key={i}>
                   <td>{item.date}</td>
                   <td>{item.pic}</td>
@@ -212,7 +226,7 @@ const Material = () => {
                           saldoAwal: item.saldoAwal,
                           terpakai: item.terpakai,
                           dismantle: item.dismantle || "",
-                          _index: item._index // Gunakan ini untuk update!
+                          _index: item._index
                         });
                         setEditMode(true);
                       }}
