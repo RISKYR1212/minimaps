@@ -164,8 +164,8 @@ const Material = () => {
           <Form.Group className="col-md-12 mt-3">
             <Button onClick={handleAdd} disabled={loading}>
               {loading
-                ? (editMode ? "⏳ Menyimpan..." : "⏳ Menambahkan...")
-                : (editMode ? "💾 Simpan Perubahan" : "➕ Tambah")}
+                ? (editMode ? " Menyimpan" : " Menambahkan")
+                : (editMode ? "Simpan Perubahan" : "Tambah")}
             </Button>
           </Form.Group>
         </Form>
@@ -176,7 +176,7 @@ const Material = () => {
         <Form.Group className="mb-3">
           <Form.Control
             type="text"
-            placeholder="🔍 Cari berdasarkan nama PIC (tim)..."
+            placeholder=" Cari berdasarkan nama PIC "
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
           />
