@@ -81,7 +81,7 @@ const CoreManagementApp = () => {
 
   return (
     <Container fluid>
-      <h3 className="mt-3">🌐 Aplikasi Web Manajemen Core FTTH ISP</h3>
+      <h3 className="mt-3"> Aplikasi Web Manajemen Core FTTH ISP</h3>
       <Row className="mt-4">
         <Col md={4}>
           <h5>➕ Tambah Kabel</h5>
@@ -97,7 +97,7 @@ const CoreManagementApp = () => {
             <Button className="mt-2" onClick={addCable}>Tambah</Button>
           </Form>
 
-          <h5 className="mt-4">🔗 Splicing Core</h5>
+          <h5 className="mt-4"> Splicing Core</h5>
           <Form>
             <Form.Group>
               <Form.Label>Dari Core</Form.Label>
@@ -110,7 +110,7 @@ const CoreManagementApp = () => {
             <Button className="mt-2" onClick={addSplice}>Splice</Button>
           </Form>
 
-          <h5 className="mt-4">🧩 Splitter/ODP</h5>
+          <h5 className="mt-4"> Splitter/ODP</h5>
           <Form>
             <Form.Group>
               <Form.Label>Nama Splitter</Form.Label>
@@ -147,12 +147,12 @@ const CoreManagementApp = () => {
             </tbody>
           </Table>
 
-          <Button variant="warning" onClick={exportToExcel}>⬇️ Export ke Excel</Button>{" "}
-          <Button variant="info" onClick={exportToPDF}>📄 Export ke PDF</Button>
+          <Button variant="warning" onClick={exportToExcel}>⬇ Export ke Excel</Button>{" "}
+          <Button variant="info" onClick={exportToPDF}> Export ke PDF</Button>
         </Col>
 
         <Col md={8}>
-          <h5>🗺️ Peta Kabel</h5>
+          <h5> Peta Kabel</h5>
           <MapContainer center={[-6.2, 106.8]} zoom={12} style={{ height: "500px", width: "100%" }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {cables.map((cable, idx) => (
@@ -162,7 +162,7 @@ const CoreManagementApp = () => {
             ))}
           </MapContainer>
 
-          <h5 className="mt-4">🔀 Sambungan Splice</h5>
+          <h5 className="mt-4"> Sambungan Splice</h5>
           <Table striped bordered size="sm">
             <thead>
               <tr>

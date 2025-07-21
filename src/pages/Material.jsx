@@ -80,13 +80,13 @@ const Material = () => {
           saldoAwal: "", terpakai: "", dismantle: "", _index: null
         });
         setEditMode(false);
-        alert(editMode ? "✅ Data berhasil diedit!" : "✅ Data berhasil ditambahkan!");
+        alert(editMode ? " Data berhasil diedit!" : "Data berhasil ditambahkan!");
       } else {
-        alert("❌ Gagal menyimpan data ke Sheet");
+        alert(" Gagal menyimpan data ke Sheet");
       }
     } catch (err) {
       console.error("POST Error:", err);
-      alert("❌ Terjadi kesalahan koneksi");
+      alert(" Terjadi kesalahan koneksi");
     } finally {
       setLoading(false);
     }

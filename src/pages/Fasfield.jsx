@@ -80,7 +80,7 @@ function Fasfield() {
     try {
       koordinat = await ambilGPS();
     } catch (err) {
-      updateTemuan(i, "statusGPS", `❌ Gagal ambil lokasi (${err})`);
+      updateTemuan(i, "statusGPS", ` Gagal ambil lokasi (${err})`);
     }
 
     const input = document.createElement("input");
@@ -96,7 +96,7 @@ function Fasfield() {
         setPreviewImage({ file, thumb, koordinat });
         setPreviewIndex(i);
       } catch {
-        alert("❌ Gagal memproses gambar.");
+        alert(" Gagal memproses gambar.");
       }
     };
     input.click();
