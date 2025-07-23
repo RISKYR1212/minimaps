@@ -115,7 +115,7 @@ function Maps() {
       setDriveFiles(data.files);
     } else {
       console.error("Respon tidak sesuai format:", data);
-      setDriveFiles([]); // fallback
+      setDriveFiles([]); 
     }
   } catch (err) {
     console.error('Gagal ambil daftar file dari backend:', err);
