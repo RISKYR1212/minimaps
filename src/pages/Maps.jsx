@@ -8,7 +8,6 @@ import { Button, Form, InputGroup, FormControl } from 'react-bootstrap';
 import * as toGeoJSON from '@tmcw/togeojson';
 import JSZip from 'jszip';
 
-// Fix leaflet icon
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -49,7 +48,9 @@ async function generateRouteFromORS(start, end) {
 }
 
 function Maps() {
+  const backendUrl =import.meta.env.VITE_BACKEND_URL;
   const defaultLocation = [-6.511809, 106.8128];
+
   const [foundMarker, setFoundMarker] = useState(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
@@ -73,11 +74,10 @@ function Maps() {
       visible: layer.visible,
       type: layer.type,
     }));
-    // console.log(id)
     try {
       localStorage.setItem('map_layers', JSON.stringify(simplifiedLayers));
     } catch (error) {
-      console.warn('Gagal menyimpan ke localStorage, membersihkan data:', error);
+      console.warn('Gagal menyimpan ke localStorage:', error);
       localStorage.removeItem('map_layers');
     }
   }, [layers]);
@@ -94,7 +94,7 @@ function Maps() {
             if (route) setRouteLine(route);
           }
         },
-        (err) => console.error("Gagal mendapatkan lokasi realtime:", err),
+        (err) => console.error("Gagal mendapatkan lokasi:", err),
         { enableHighAccuracy: true, maximumAge: 0 }
       );
     }
@@ -103,20 +103,26 @@ function Maps() {
     };
   }, [navigationTarget]);
 
- const fetchFileList = async () => {
+  const fetchFileList = async () => {
   setLoading(true);
   try {
-    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/files`);
+    const res = await fetch(`${backendUrl}/files`, {
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
     const data = await res.json();
 
-    // Periksa apakah hasilnya array
     if (Array.isArray(data)) {
       setDriveFiles(data);
     } else if (data.files && Array.isArray(data.files)) {
       setDriveFiles(data.files);
     } else {
       console.error("Respon tidak sesuai format:", data);
-      setDriveFiles([]); 
+      setDriveFiles([]);
     }
   } catch (err) {
     console.error('Gagal ambil daftar file dari backend:', err);
@@ -127,9 +133,11 @@ function Maps() {
 };
 
 
+
+
   const loadFileById = async (fileId, fileName) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/download/${fileId}`);
+      const res = await fetch(`${backendUrl}/download/${fileId}`);
       if (!res.ok) throw new Error(`Gagal fetch file ID: ${fileId}`);
       const blob = await res.blob();
       const fileObj = new File([blob], fileName, { type: blob.type });
@@ -216,7 +224,8 @@ function Maps() {
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
-      <div style={{ position: 'absolute', top: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 1500, background: '#fff', padding: 8, borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+      {/* UI Pencarian */}
+      <div style={{ position: 'absolute', top: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 1500, background: '#fff', padding: 8, borderRadius: 6 }}>
         <InputGroup size="sm">
           <FormControl
             placeholder="Cari marker, polyline, atau koordinat..."
@@ -227,6 +236,7 @@ function Maps() {
         </InputGroup>
       </div>
 
+      {/* Sidebar */}
       {sidebarVisible && (
         <div style={{ position: 'absolute', top: 0, left: 0, width: 320, height: '100%', background: '#f8f9fa', zIndex: 1100, overflowY: 'auto', padding: 12 }}>
           <h5>Daftar File</h5>
@@ -241,16 +251,14 @@ function Maps() {
           <hr />
           <h5>Layer</h5>
           {layers.map((layer, i) => (
-            <div key={layer.name + i} style={{ marginBottom: 12, borderBottom: '1px solid #ccc', paddingBottom: 8 }}>
+            <div key={layer.name + i} style={{ marginBottom: 12 }}>
               <Form.Check
                 type="checkbox"
                 checked={layer.visible}
                 label={layer.name}
-                onChange={() => {
-                  setLayers(prev =>
-                    prev.map((l, idx) => idx === i ? { ...l, visible: !l.visible } : l)
-                  );
-                }}
+                onChange={() => setLayers(prev =>
+                  prev.map((l, idx) => idx === i ? { ...l, visible: !l.visible } : l)
+                )}
               />
               <InputGroup className="mt-1">
                 <InputGroup.Text>Warna</InputGroup.Text>
@@ -264,27 +272,19 @@ function Maps() {
           ))}
         </div>
       )}
-      <Button
-        size="sm"
-        variant="success"
-        onClick={() => {
-          if (userLocation) {
-            setFoundMarker(userLocation);
-          } else {
-            alert("Lokasi belum tersedia.");
-          }
-        }}
-        style={{ position: 'absolute', top: 12, left: 320, zIndex: 1200 }}
-      >
-        Titik Saya
-      </Button>
 
+      {/* Tombol Kontrol */}
       <Button size="sm" variant="primary" onClick={() => setSidebarVisible(!sidebarVisible)} style={{ position: 'absolute', top: 12, left: 12, zIndex: 1200 }}>
         {sidebarVisible ? 'Sembunyikan Sidebar' : 'Tampilkan Sidebar'}
       </Button>
-
       <Button size="sm" variant="info" onClick={fetchFileList} style={{ position: 'absolute', top: 12, left: 180, zIndex: 1200 }}>
         Lihat File dari Drive
+      </Button>
+      <Button size="sm" variant="success" onClick={() => {
+        if (userLocation) setFoundMarker(userLocation);
+        else alert("Lokasi belum tersedia.");
+      }} style={{ position: 'absolute', top: 12, left: 320, zIndex: 1200 }}>
+        Titik Saya
       </Button>
 
       {loading && (
@@ -293,14 +293,9 @@ function Maps() {
         </div>
       )}
 
-      <MapContainer
-        center={defaultLocation}
-        zoom={14}
-        scrollWheelZoom
-        style={{ height: '100%', width: '100%', marginLeft: sidebarVisible ? 320 : 0, transition: 'margin-left 0.3s ease' }}
-      >
+      {/* Peta */}
+      <MapContainer center={defaultLocation} zoom={14} scrollWheelZoom style={{ height: '100%', width: '100%', marginLeft: sidebarVisible ? 320 : 0 }}>
         <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
         <FlyToLocation key={JSON.stringify(foundMarker)} location={foundMarker} />
 
         {userLocation && (
@@ -320,33 +315,20 @@ function Maps() {
                 <Popup>
                   <div>
                     <div>{marker.label}</div>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="mt-2"
-                      onClick={async () => {
-                        const target = [marker.lat, marker.lng];
-                        setNavigationTarget(target);
-                        if (userLocation) {
-                          const route = await generateRouteFromORS(userLocation, target);
-                          if (route) setRouteLine(route);
-                        }
-                      }}
-                    >
-                      Navigasi
-                    </Button>
+                    <Button size="sm" variant="primary" className="mt-2" onClick={async () => {
+                      const target = [marker.lat, marker.lng];
+                      setNavigationTarget(target);
+                      if (userLocation) {
+                        const route = await generateRouteFromORS(userLocation, target);
+                        if (route) setRouteLine(route);
+                      }
+                    }}>Navigasi</Button>
                   </div>
                 </Popup>
               </Marker>
             ))}
             {layer.polylines.map((pline, idx) => (
-              <Polyline
-                key={idx}
-                positions={pline.positions}
-                color={layer.color}
-                weight={4}
-                opacity={0.8}
-              >
+              <Polyline key={idx} positions={pline.positions} color={layer.color} weight={4} opacity={0.8}>
                 <Popup>{pline.label}</Popup>
               </Polyline>
             ))}

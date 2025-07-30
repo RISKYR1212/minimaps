@@ -10,8 +10,16 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 
-const GOOGLE_API_KEY = 'AIzaSyAxbag1H3t6LCEorrwtzPyaVhSgAzvqgwA';
-const GOOGLE_DRIVE_FOLDER_ID = '1KCFDCsSPbt9YQC9C58XpHLV4ba7Cdyip';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+console.log("API KEY:", process.env.GOOGLE_API_KEY);
+console.log("FOLDER ID:", process.env.GOOGLE_DRIVE_FOLDER_ID);
+
+
+
+app.get('/', (req, res) => {
+  res.send('Server is running. Endpoint tersedia di /files');
+});
 
 app.get('/files', async (req, res) => {
   try {
