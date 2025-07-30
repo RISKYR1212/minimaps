@@ -6,10 +6,18 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+const cors = require('cors')
 
-const GOOGLE_API_KEY ='AIzaSyAxbag1H3t6LCEorrwtzPyaVhSgAzvqgwA';
-const GOOGLE_DRIVE_FOLDER_ID ='1KCFDCsSPbt9YQC9C58XpHLV4ba7Cdyip';
+app.use(cors({
+  origin: "https://core-management.vercel.app",
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+
+
+const GOOGLE_API_KEY = 'AIzaSyAxbag1H3t6LCEorrwtzPyaVhSgAzvqgwA';
+const GOOGLE_DRIVE_FOLDER_ID = '1KCFDCsSPbt9YQC9C58XpHLV4ba7Cdyip';
 
 console.log("API KEY:", GOOGLE_API_KEY);
 console.log("FOLDER ID:", GOOGLE_DRIVE_FOLDER_ID);
@@ -30,10 +38,10 @@ app.get('/files', async (req, res) => {
     const response = await axios.get(url);
 
     const files = response.data.files || [];
-    res.json({ files }); 
+    res.json({ files });
   } catch (error) {
     console.error('Gagal mengambil file:', error.message);
-    res.status(500).json({ error: 'Gagal mengambil file dari Google Drive' }); 
+    res.status(500).json({ error: 'Gagal mengambil file dari Google Drive' });
   }
 });
 

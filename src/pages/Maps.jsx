@@ -48,6 +48,7 @@ async function generateRouteFromORS(start, end) {
 }
 
 function Maps() {
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const defaultLocation = [-6.511809, 106.8128];
   const [foundMarker, setFoundMarker] = useState(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -60,15 +61,24 @@ function Maps() {
   const [routeLine, setRouteLine] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/files`)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log('List file:', data);
-        // parsing dan render ke Leaflet
-      })
-      .catch((err) => console.error('Gagal fetch:', err));
-  }, []);
+useEffect(() => {
+  if (!BACKEND_URL) {
+    console.error('BACKEND_URL tidak terdefinisi!');
+    return;
+  }
+
+  fetch(`${BACKEND_URL}/files`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      return res.json();
+    })
+    .then((data) => {
+      console.log('List file:', data);
+      setDriveFiles(data); // jika ingin simpan
+    })
+    .catch((err) => console.error('Gagal fetch:', err.message));
+}, []);
+
 
   useEffect(() => {
     const saved = localStorage.getItem('map_layers');
@@ -112,7 +122,7 @@ function Maps() {
     };
   }, [navigationTarget]);
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+  
 
   const fetchFileList = async () => {
     setLoading(true);
