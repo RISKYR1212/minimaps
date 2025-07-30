@@ -48,9 +48,7 @@ async function generateRouteFromORS(start, end) {
 }
 
 function Maps() {
-  const backendUrl =import.meta.env.VITE_BACKEND_URL;
   const defaultLocation = [-6.511809, 106.8128];
-
   const [foundMarker, setFoundMarker] = useState(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
@@ -63,9 +61,20 @@ function Maps() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
+    fetch(`${BACKEND_URL}/files`)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log('List file:', data);
+        // parsing dan render ke Leaflet
+      })
+      .catch((err) => console.error('Gagal fetch:', err));
+  }, []);
+
+  useEffect(() => {
     const saved = localStorage.getItem('map_layers');
     if (saved) setLayers(JSON.parse(saved));
   }, []);
+
 
   useEffect(() => {
     const simplifiedLayers = layers.map(layer => ({
@@ -103,41 +112,43 @@ function Maps() {
     };
   }, [navigationTarget]);
 
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
   const fetchFileList = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch(`${backendUrl}/files`, {
-      headers: { Accept: 'application/json' }
-    });
+    setLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/files`, {
+        headers: { Accept: 'application/json' }
+      });
 
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (Array.isArray(data)) {
-      setDriveFiles(data);
-    } else if (data.files && Array.isArray(data.files)) {
-      setDriveFiles(data.files);
-    } else {
-      console.error("Respon tidak sesuai format:", data);
+      if (Array.isArray(data)) {
+        setDriveFiles(data);
+      } else if (data.files && Array.isArray(data.files)) {
+        setDriveFiles(data.files);
+      } else {
+        console.error("Respon tidak sesuai format:", data);
+        setDriveFiles([]);
+      }
+    } catch (err) {
+      console.error('Gagal ambil daftar file dari backend:', err);
       setDriveFiles([]);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Gagal ambil daftar file dari backend:', err);
-    setDriveFiles([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
 
 
 
   const loadFileById = async (fileId, fileName) => {
     try {
-      const res = await fetch(`${backendUrl}/download/${fileId}`);
+      const res = await fetch(`${BACKEND_URL}/download/${fileId}`);
       if (!res.ok) throw new Error(`Gagal fetch file ID: ${fileId}`);
       const blob = await res.blob();
       const fileObj = new File([blob], fileName, { type: blob.type });

@@ -48,8 +48,7 @@ plugins: [
     },
   },
   server: {
-    host: "localhost",
-    // host: "127.0.0.1",
-    port: 5173,
+    host: true,
+    allowedHosts: [" https://484da7841f1d.ngrok-free.app "]
   },
 })
