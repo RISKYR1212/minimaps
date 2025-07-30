@@ -73,6 +73,7 @@ function Maps() {
       visible: layer.visible,
       type: layer.type,
     }));
+    // console.log(id)
     try {
       localStorage.setItem('map_layers', JSON.stringify(simplifiedLayers));
     } catch (error) {
