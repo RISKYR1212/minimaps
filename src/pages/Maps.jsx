@@ -61,30 +61,28 @@ function Maps() {
   const [routeLine, setRouteLine] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-useEffect(() => {
-  if (!BACKEND_URL) {
-    console.error('BACKEND_URL tidak terdefinisi!');
-    return;
-  }
+  useEffect(() => {
+    if (!BACKEND_URL) {
+      console.error('BACKEND_URL tidak terdefinisi!');
+      return;
+    }
 
-  fetch(`${BACKEND_URL}/files`)
-    .then((res) => {
-      if (!res.ok) throw new Error(`Status: ${res.status}`);
-      return res.json();
-    })
-    .then((data) => {
-      console.log('List file:', data);
-      setDriveFiles(data); // jika ingin simpan
-    })
-    .catch((err) => console.error('Gagal fetch:', err.message));
-}, []);
-
+    fetch(`${BACKEND_URL}/files`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Status: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        console.log('List file:', data);
+        setDriveFiles(data.files || []);
+      })
+      .catch((err) => console.error('Gagal fetch:', err.message));
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('map_layers');
     if (saved) setLayers(JSON.parse(saved));
   }, []);
-
 
   useEffect(() => {
     const simplifiedLayers = layers.map(layer => ({
@@ -122,8 +120,6 @@ useEffect(() => {
     };
   }, [navigationTarget]);
 
-  
-
   const fetchFileList = async () => {
     setLoading(true);
     try {
@@ -136,7 +132,6 @@ useEffect(() => {
       }
 
       const data = await res.json();
-
       if (Array.isArray(data)) {
         setDriveFiles(data);
       } else if (data.files && Array.isArray(data.files)) {
@@ -152,9 +147,6 @@ useEffect(() => {
       setLoading(false);
     }
   };
-
-
-
 
   const loadFileById = async (fileId, fileName) => {
     try {
@@ -205,20 +197,26 @@ useEffect(() => {
     });
 
     const color = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-    setLayers(prev => [...prev, { name, visible: true, color, markers, polylines }]);
+    setLayers(prev => [...prev, {
+      name,
+      visible: true,
+      color,
+      markers: markers || [],
+      polylines: polylines || []
+    }]);
   };
 
   const handleSearch = () => {
     if (!searchTerm) return;
     const lowerSearch = searchTerm.toLowerCase();
     for (const layer of layers) {
-      for (const marker of layer.markers) {
+      for (const marker of layer.markers || []) {
         if (marker.label.toLowerCase().includes(lowerSearch)) {
           setFoundMarker([marker.lat, marker.lng]);
           return;
         }
       }
-      for (const line of layer.polylines) {
+      for (const line of layer.polylines || []) {
         if (line.label.toLowerCase().includes(lowerSearch)) {
           if (line.positions.length > 0) {
             setFoundMarker(line.positions[0]);
@@ -331,7 +329,7 @@ useEffect(() => {
 
         {layers.map((layer, i) => layer.visible && (
           <LayerGroup key={layer.name + i}>
-            {layer.markers.map((marker, idx) => (
+            {(layer.markers || []).map((marker, idx) => (
               <Marker key={idx} position={[marker.lat, marker.lng]}>
                 <Popup>
                   <div>
@@ -348,7 +346,7 @@ useEffect(() => {
                 </Popup>
               </Marker>
             ))}
-            {layer.polylines.map((pline, idx) => (
+            {(layer.polylines || []).map((pline, idx) => (
               <Polyline key={idx} positions={pline.positions} color={layer.color} weight={4} opacity={0.8}>
                 <Popup>{pline.label}</Popup>
               </Polyline>
