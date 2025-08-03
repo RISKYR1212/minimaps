@@ -73,9 +73,11 @@ function Maps() {
         return res.json();
       })
       .then((data) => {
-        console.log('List file:', data);
-        setDriveFiles(data.files || []);
+        const list = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
+        console.log('List file:', list);
+        setDriveFiles(list);
       })
+
       .catch((err) => console.error('Gagal fetch:', err.message));
   }, []);
 
