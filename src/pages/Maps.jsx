@@ -62,24 +62,21 @@ function Maps() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!BACKEND_URL) {
-      console.error('BACKEND_URL tidak terdefinisi!');
-      return;
-    }
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-    fetch(`${BACKEND_URL}/files`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Status: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
-        console.log('List file:', list);
-        setDriveFiles(list);
-      })
+  fetch(`${BACKEND_URL}/files`)
+    .then((res) => {
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      return res.json();
+    })
+    .then((data) => {
+      const list = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
+      console.log('List file:', list);
+      setDriveFiles(list);
+    })
+    .catch((err) => console.error('Gagal fetch:', err.message));
+}, []);
 
-      .catch((err) => console.error('Gagal fetch:', err.message));
-  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('map_layers');
