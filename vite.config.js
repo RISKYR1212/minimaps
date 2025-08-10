@@ -49,6 +49,6 @@ plugins: [
   },
   server: {
     host: true,
-    allowedHosts: [" .ngrok-free.app "]
+    allowedHosts: [".ngrok-free.app"]
   },
 })
