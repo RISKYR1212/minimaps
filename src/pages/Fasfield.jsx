@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import axios from "axios";
 import logoURL from "../assets/logo-jlm.jpeg";
-import {
-  Container, Row, Col, Form, Button, Card, Image, Modal, Table
-} from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Card, Image, Modal, Table } from "react-bootstrap";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const LOCAL_KEY = "fasfield_isp_form_v2";
 const PDF_TITLE = "LAPORAN PATROLI";
@@ -188,10 +188,25 @@ function Fasfield() {
     return doc.output("blob");
   };
 
+  // Fungsi untuk unduh Excel
+  const downloadExcel = () => {
+    if (data.length === 0) {
+      alert("Tidak ada data untuk diunduh");
+      return;
+    }
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data Patroli");
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(blob, "data_patrol.xlsx");
+  };
+
   return (
     <Container className="py-3">
       <h4 className="text-center mb-3">Laporan Patroli</h4>
 
+      {/* Form Input */}
       <Card className="mb-4">
         <Card.Body>
           <Form>
@@ -217,8 +232,8 @@ function Fasfield() {
                     <Form.Control placeholder="Hasil" value={t.hasil} onChange={(e) => updateTemuan(i, "hasil", e.target.value)} />
                   </Form.Group>
                   <div className="d-flex gap-2 mb-2">
-                    <Button size="sm" onClick={() => ambilFoto(i, true)}>📷 Kamera</Button>
-                    <Button size="sm" variant="secondary" onClick={() => ambilFoto(i, false)}>🖼️ Galeri</Button>
+                    <Button size="sm" onClick={() => ambilFoto(i, true)}> Kamera</Button>
+                    <Button size="sm" variant="secondary" onClick={() => ambilFoto(i, false)}> Galeri</Button>
                   </div>
                   {t.fotoThumb && <Image src={t.fotoThumb} thumbnail className="mb-2" style={{ maxWidth: "100%" }} />}
                   <div className="text-muted small mb-2">{t.statusGPS}</div>
@@ -230,13 +245,14 @@ function Fasfield() {
         </Card.Body>
       </Card>
 
+      {/* Tombol Aksi */}
       <Row className="g-2 mb-4">
         <Col>
           <Button className="w-100" onClick={async () => {
             const blob = await generatePDFBlob();
             const url = URL.createObjectURL(blob);
             setPdfPreviewUrl(url);
-          }}>👁️ Preview PDF</Button>
+          }}> lihat PDF sebelum di download</Button>
         </Col>
         <Col>
           <Button className="w-100" onClick={async () => {
@@ -245,7 +261,7 @@ function Fasfield() {
             a.href = URL.createObjectURL(blob);
             a.download = `${form.filename || "laporan"}.pdf`;
             a.click();
-          }}>📄 Unduh PDF</Button>
+          }}> Unduh PDF</Button>
         </Col>
         <Col>
           <Button className="w-100" onClick={async () => {
@@ -270,24 +286,29 @@ function Fasfield() {
                 const res = await axios.post(endpoint, new URLSearchParams(payload));
                 if (!res.data.ok) throw new Error(res.data.message);
               }
-              alert(isEdit ? "✅ Data berhasil diedit!" : "✅ Data berhasil dikirim!");
+              alert(isEdit ? " Data berhasil diedit!" : " Data berhasil dikirim!");
               setForm({ tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null });
               setEditMode(false);
             } catch (err) {
-              alert("❌ Gagal kirim data: " + err.message);
+              alert(" Gagal kirim data: " + err.message);
             }
           }}>
-            {editMode ? "💾 Simpan Perubahan" : "📤 Kirim ke Google Sheets"}
+            {editMode ? " Simpan Perubahan" : " Kirim ke Google Sheets"}
           </Button>
+        </Col>
+        <Col>
+          <Button className="w-100" variant="success" onClick={downloadExcel}> Unduh Data</Button>
         </Col>
       </Row>
 
+      {/* Preview PDF */}
       {pdfPreviewUrl && (
         <div className="mb-4">
           <iframe src={pdfPreviewUrl} title="PDF Preview" style={{ width: "100%", height: "500px" }}></iframe>
         </div>
       )}
 
+      {/* Tabel Data */}
       <Card className="mb-4">
         <Card.Body>
           <h5 className="mb-3">Data Tersimpan</h5>
@@ -321,7 +342,7 @@ function Fasfield() {
                     <td>{row.koordinat}</td>
                     <td>
                       <Button size="sm" variant="warning" onClick={() => handleEditTemuan(row)}>
-                        ✏️ Edit
+                         Edit
                       </Button>
                     </td>
                   </tr>
@@ -332,6 +353,7 @@ function Fasfield() {
         </Card.Body>
       </Card>
 
+      {/* Modal Preview Foto */}
       <Modal show={!!previewImage} onHide={() => setPreviewImage(null)} centered size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Pratinjau Foto</Modal.Title>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, Container, Table, Form, Button } from "react-bootstrap";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
@@ -61,7 +63,7 @@ const Material = () => {
       saldoAwal, terpakai, sisa, dismantle
     };
 
-    if (editMode && _index) {
+    if (editMode && _index !== null) {
       payload.edit = "edit";
       payload.index = _index;
     }
@@ -82,20 +84,29 @@ const Material = () => {
           saldoAwal: "", terpakai: "", dismantle: "", _index: null
         });
         setEditMode(false);
-        alert(editMode ? " Data berhasil diedit!" : "Data berhasil ditambahkan!");
+        alert(editMode ? "Data berhasil diedit!" : "Data berhasil ditambahkan!");
       } else {
-        alert(" Gagal menyimpan data ke Sheet");
+        alert("Gagal menyimpan data ke Sheet");
       }
     } catch (err) {
       console.error("POST Error:", err);
-      alert(" Terjadi kesalahan koneksi");
+      alert("Terjadi kesalahan koneksi");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleExport = () => {
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Material");
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(blob, "Laporan_Material.xlsx");
+  };
+
   const filteredData = data.filter(item =>
-    item.pic?.toLowerCase().includes(searchTerm)
+    item.pic?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -164,23 +175,25 @@ const Material = () => {
           </Form.Group>
 
           <Form.Group className="col-md-12 mt-3">
-            <Button onClick={handleAdd} disabled={loading}>
+            <Button onClick={handleAdd} disabled={loading} className="me-2">
               {loading
-                ? (editMode ? " Menyimpan" : " Menambahkan")
+                ? (editMode ? "Menyimpan" : "Menambahkan")
                 : (editMode ? "Simpan Perubahan" : "Tambah")}
+            </Button>
+            <Button variant="success" onClick={handleExport}>
+              Export Excel
             </Button>
           </Form.Group>
         </Form>
       </Card>
 
       <Card className="p-4">
-        {/* Input pencarian berdasarkan PIC */}
         <Form.Group className="mb-3">
           <Form.Control
             type="text"
-            placeholder=" Cari berdasarkan nama PIC "
+            placeholder="Cari berdasarkan nama PIC"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </Form.Group>
 
