@@ -60,20 +60,20 @@ function Maps() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-  fetch(`${BACKEND_URL}/files`)
-    .then((res) => {
-      if (!res.ok) throw new Error(`Status: ${res.status}`);
-      return res.json();
-    })
-    .then((data) => {
-      const list = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
-      console.log('List file:', list);
-      setDriveFiles(list);
-    })
-    .catch((err) => console.error('Gagal fetch:', err.message));
-}, []);
+    fetch(`${BACKEND_URL}/files`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Status: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
+        console.log('List file:', list);
+        setDriveFiles(list);
+      })
+      .catch((err) => console.error('Gagal fetch:', err.message));
+  }, []);
 
 
   useEffect(() => {
@@ -267,15 +267,26 @@ function Maps() {
           <hr />
           <h5>Layer</h5>
           {layers.map((layer, i) => (
-            <div key={layer.name + i} style={{ marginBottom: 12 }}>
-              <Form.Check
-                type="checkbox"
-                checked={layer.visible}
-                label={layer.name}
-                onChange={() => setLayers(prev =>
-                  prev.map((l, idx) => idx === i ? { ...l, visible: !l.visible } : l)
-                )}
-              />
+            <div key={layer.name + i} style={{ marginBottom: 12, borderBottom: '1px solid #ccc', paddingBottom: 8 }}>
+              <div className="d-flex justify-content-between align-items-center">
+                <Form.Check
+                  type="checkbox"
+                  checked={layer.visible}
+                  label={layer.name}
+                  onChange={() => setLayers(prev =>
+                    prev.map((l, idx) => idx === i ? { ...l, visible: !l.visible } : l)
+                  )}
+                />
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => {
+                    setLayers(prev => prev.filter((_, idx) => idx !== i));
+                  }}
+                >
+                  Hapus
+                </Button>
+              </div>
               <InputGroup className="mt-1">
                 <InputGroup.Text>Warna</InputGroup.Text>
                 <Form.Control
@@ -286,6 +297,7 @@ function Maps() {
               </InputGroup>
             </div>
           ))}
+
         </div>
       )}
 
