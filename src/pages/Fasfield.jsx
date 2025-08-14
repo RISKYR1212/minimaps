@@ -5,8 +5,9 @@ import logoURL from "../assets/logo-jlm.jpeg";
 import { Container, Row, Col, Form, Button, Card, Image, Modal, Table } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import EXIF from "exif-js";
+import Tesseract from "tesseract.js";
 
-const LOCAL_KEY = "fasfield_isp_form_v2";
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
@@ -15,15 +16,77 @@ const blankTemuan = () => ({
   foto: null, fotoThumb: "", koordinat: "", statusGPS: ""
 });
 
-const ambilGPS = () => new Promise((ok, no) => {
-  if (!navigator.geolocation) return no("Geolocation tidak didukung browser");
-  navigator.geolocation.getCurrentPosition(
-    ({ coords }) => ok(`${coords.latitude}, ${coords.longitude}`),
-    (err) => no(err.message),
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-  );
-});
+// Konversi DMS → decimal
+const dmsToDecimal = (deg, min, sec, ref) => {
+  let decimal = deg + min / 60 + sec / 3600;
+  if (ref === "S" || ref === "W") decimal *= -1;
+  return parseFloat(decimal.toFixed(6));
+};
 
+// Ambil GPS dari EXIF
+const getGPSFromExif = (file) => {
+  return new Promise((resolve) => {
+    EXIF.getData(file, function () {
+      const lat = EXIF.getTag(this, "GPSLatitude");
+      const lon = EXIF.getTag(this, "GPSLongitude");
+      const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+      const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+      if (lat && lon && latRef && lonRef) {
+        const latitude = dmsToDecimal(
+          lat[0].numerator / lat[0].denominator,
+          lat[1].numerator / lat[1].denominator,
+          lat[2].numerator / lat[2].denominator,
+          latRef
+        );
+        const longitude = dmsToDecimal(
+          lon[0].numerator / lon[0].denominator,
+          lon[1].numerator / lon[1].denominator,
+          lon[2].numerator / lon[2].denominator,
+          lonRef
+        );
+        resolve(`${latitude}, ${longitude}`);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+};
+
+// Parsing koordinat dari teks OCR
+const parseCoordinatesFromText = (text) => {
+  const regex = /(\d+)°(\d+)'([\d.]+)"([NS])\s+(\d+)°(\d+)'([\d.]+)"([EW])/;
+  const match = text.match(regex);
+  if (match) {
+    const lat = dmsToDecimal(
+      parseInt(match[1]),
+      parseInt(match[2]),
+      parseFloat(match[3]),
+      match[4]
+    );
+    const lon = dmsToDecimal(
+      parseInt(match[5]),
+      parseInt(match[6]),
+      parseFloat(match[7]),
+      match[8]
+    );
+    return `${lat}, ${lon}`;
+  }
+  return null;
+};
+
+// Ambil GPS dari OCR Tesseract
+const getGPSFromOCR = async (file) => {
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, "eng");
+    const coords = parseCoordinatesFromText(text);
+    return coords;
+  } catch {
+    return null;
+  }
+};
+
+// Resize image untuk thumbnail
 const resizeImage = (file, max = 600, q = 0.8) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => {
@@ -75,14 +138,7 @@ function Fasfield() {
       return { ...p, temuanList: l };
     });
 
-  const ambilFoto = async (i, capture = false) => {
-    let koordinat = "";
-    try {
-      koordinat = await ambilGPS();
-    } catch (err) {
-      updateTemuan(i, "statusGPS", ` Gagal ambil lokasi (${err})`);
-    }
-
+  const ambilFoto = async (i, capture = true) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -91,12 +147,40 @@ function Fasfield() {
     input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
       try {
+        // 1. Coba ambil GPS dari EXIF
+        let koordinat = await getGPSFromExif(file);
+        let statusGPS = "";
+
+        // 2. Kalau EXIF kosong, coba OCR
+        if (!koordinat) {
+          koordinat = await getGPSFromOCR(file);
+          statusGPS = koordinat ? "Lokasi dari teks di foto (OCR)" : "";
+        } else {
+          statusGPS = "Lokasi dari metadata foto (EXIF)";
+        }
+
+        // Kalau OCR juga gagal, fallback ke GPS perangkat
+        if (!koordinat && navigator.geolocation) {
+          await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                koordinat = `${pos.coords.latitude}, ${pos.coords.longitude}`;
+                statusGPS = "Lokasi dari GPS perangkat";
+                resolve();
+              },
+              () => resolve()
+            );
+          });
+        }
+
         const thumb = await resizeImage(file);
-        setPreviewImage({ file, thumb, koordinat });
+        setPreviewImage({ file, thumb, koordinat, statusGPS });
         setPreviewIndex(i);
-      } catch {
-        alert(" Gagal memproses gambar.");
+
+      } catch (err) {
+        updateTemuan(i, "statusGPS", `Gagal baca GPS (${err})`);
       }
     };
     input.click();
@@ -131,7 +215,7 @@ function Fasfield() {
       img.src = logoURL;
       await new Promise((resolve) => { img.onload = () => resolve(); });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch {}
+    } catch { }
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
@@ -164,9 +248,6 @@ function Fasfield() {
       const lines3 = doc.splitTextToSize(`Hasil: ${t.hasil}`, textWidth);
       const lines4 = doc.splitTextToSize(`Koordinat: ${t.koordinat}`, textWidth);
 
-      const allLines = [...lines1, ...lines2, ...lines3, ...lines4];
-      const totalHeight = allLines.length * lineHeight;
-
       let currentY = y;
       doc.setFontSize(11);
       doc.text(lines1, textX, currentY); currentY += lines1.length * lineHeight;
@@ -182,13 +263,12 @@ function Fasfield() {
         }
       }
 
-      y += Math.max(totalHeight, imageHeight) + 10;
+      y += Math.max(lines1.length + lines2.length + lines3.length + lines4.length, imageHeight) + 10;
     }
 
     return doc.output("blob");
   };
 
-  // Fungsi untuk unduh Excel
   const downloadExcel = () => {
     if (data.length === 0) {
       alert("Tidak ada data untuk diunduh");
@@ -240,7 +320,7 @@ function Fasfield() {
                 </Card.Body>
               </Card>
             ))}
-            <Button onClick={() => setForm(p => ({ ...p, temuanList: [...p.temuanList, blankTemuan()] }))}>+ Tambah Temuan</Button>
+            <Button onClick={() => setForm(p => ({ ...p, temuanList: [...p.temuanList, blankTemuan()] }))}> Tambah Temuan</Button>
           </Form>
         </Card.Body>
       </Card>
@@ -342,7 +422,7 @@ function Fasfield() {
                     <td>{row.koordinat}</td>
                     <td>
                       <Button size="sm" variant="warning" onClick={() => handleEditTemuan(row)}>
-                         Edit
+                        Edit
                       </Button>
                     </td>
                   </tr>
@@ -365,23 +445,21 @@ function Fasfield() {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setPreviewImage(null)}>Batal</Button>
-          <Button variant="primary" onClick={() => {
-            if (previewIndex !== null) {
-              setForm((p) => {
-                const updatedList = [...p.temuanList];
-                updatedList[previewIndex] = {
-                  ...updatedList[previewIndex],
-                  foto: previewImage.file,
-                  fotoThumb: previewImage.thumb,
-                  koordinat: previewImage.koordinat,
-                  statusGPS: " Lokasi berhasil diambil",
-                };
-                return { ...p, temuanList: updatedList };
-              });
-            }
-            setPreviewImage(null);
-            setPreviewIndex(null);
-          }}>Gunakan</Button>
+          <Button variant
+            ="primary"
+            onClick={() => {
+              if (previewIndex !== null && previewImage) {
+                updateTemuan(previewIndex, "fotoThumb", previewImage.thumb);
+                updateTemuan(previewIndex, "foto", previewImage.file);
+                updateTemuan(previewIndex, "koordinat", previewImage.koordinat || "");
+                updateTemuan(previewIndex, "statusGPS", previewImage.statusGPS || "");
+                setPreviewImage(null);
+                setPreviewIndex(null);
+              }
+            }}
+          >
+            Simpan Foto & Koordinat
+          </Button>
         </Modal.Footer>
       </Modal>
     </Container>
@@ -389,3 +467,4 @@ function Fasfield() {
 }
 
 export default Fasfield;
+
