@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom'; 
 
 import Navbar from './componen/Navbar';
@@ -8,7 +7,7 @@ import Fasfield from './pages/Fasfield';
 import Core from './pages/Core';
 import Osp from './pages/Osp';
 import Material from './pages/Material'; 
-import Boq from './pages/Boq';   // pastikan file namanya "Boq.jsx"
+import Boq from './pages/Boq';   // 
 import Inventory from './pages/Inventory';
 import Project from './pages/Project';
 
