@@ -1,4 +1,3 @@
-// App.jsx
 import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom'; 
 
@@ -9,13 +8,11 @@ import Fasfield from './pages/Fasfield';
 import Core from './pages/Core';
 import Osp from './pages/Osp';
 import Material from './pages/Material'; 
-import Boq from './pages/boq';
+import Boq from './pages/Boq';   // pastikan file namanya "Boq.jsx"
 import Inventory from './pages/Inventory';
 import Project from './pages/Project';
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
     <>
       <Navbar />
@@ -27,8 +24,8 @@ function App() {
         <Route path="/osp" element={<Osp />} />
         <Route path="/material" element={<Material />} /> 
         <Route path="/boq" element={<Boq />} />
-        <Route path='inventory' element={<Inventory/>} />
-        <Route path='project' element={<Project/>} />
+        <Route path="/inventory" element={<Inventory />} />
+        <Route path="/project" element={<Project />} />
       </Routes>
     </>
   );
