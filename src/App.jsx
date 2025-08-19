@@ -9,6 +9,9 @@ import Fasfield from './pages/Fasfield';
 import Core from './pages/Core';
 import Osp from './pages/Osp';
 import Material from './pages/Material'; 
+import Boq from './pages/Boq';
+import Inventory from './pages/Inventory';
+import Project from './pages/Project';
 
 function App() {
   const [count, setCount] = useState(0);
@@ -23,6 +26,9 @@ function App() {
         <Route path="/core" element={<Core />} />
         <Route path="/osp" element={<Osp />} />
         <Route path="/material" element={<Material />} /> 
+        <Route path="/boq" element={<Boq />} />
+        <Route path='inventory' element={<Inventory/>} />
+        <Route path='project' element={<Project/>} />
       </Routes>
     </>
   );

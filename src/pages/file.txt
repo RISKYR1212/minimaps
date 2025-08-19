@@ -24,3 +24,22 @@ NOTE : semua harus berjalan sesuai plan di fitur masing masing saling terhubung 
 form 3 + nambah foto+GPS
 1 start ticket - start user
 1 form foto + gps
+
+
+
+
+
+Goals nya
+- create project
+- create bom / boq
+- fiber management
+- Build as plan layer
+- Build as build layer
+- Kolaborasi data masukan dari vendor penarikan dilapangan dengan approval 
+- inventaris aset dilapangan (tiang, kabel odc, odp, dst)
+- mobile responsive 
+- searchable asset
+- open api (api beres)
+- user role group & privileges 
+- export to autocad file / kmz
+- import kmz / autocad file

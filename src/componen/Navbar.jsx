@@ -51,6 +51,9 @@ const Navbar = () => {
     { path: '/core', label: 'AlokasiCore' },
     { path: '/osp', label: 'OSP' },
     { path: '/material', label: 'Material' },
+    { path: '/boq', label: 'Boq' },
+    // { path: '/inventory', label: 'Inventory' },
+    { path: '/project', label: 'Project' },
   ];
 
   const handleLinkClick = () => {

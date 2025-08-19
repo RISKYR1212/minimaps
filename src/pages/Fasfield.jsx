@@ -69,14 +69,21 @@ const resizeImage = (file, max = 600, q = 0.8) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const img = document.createElement("img");
+      const img = new Image();
       img.onload = () => {
-        const c = document.createElement("canvas");
-        const scale = max / Math.max(img.width, img.height);
-        c.width = img.width * scale;
-        c.height = img.height * scale;
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL("image/jpeg", q));
+        try {
+          const c = document.createElement("canvas");
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          c.width = img.width * scale;
+          c.height = img.height * scale;
+          const ctx = c.getContext("2d");
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+          const dataUrl = c.toDataURL("image/jpeg", q);
+          resolve(dataUrl);
+        } catch (err) {
+          console.error("Resize error:", err);
+          reject("Gagal konversi gambar");
+        }
       };
       img.onerror = () => reject("Gagal memuat gambar");
       img.src = reader.result;
@@ -145,8 +152,8 @@ function Fasfield() {
         const thumb = await resizeImage(file);
         setPreviewImage({ file, thumb, koordinat });
         setPreviewIndex(i);
-      } catch {
-        alert("Gagal memproses gambar.");
+      } catch (err) {
+        alert("Gagal memproses gambar: " + err);
       }
     };
 
@@ -225,7 +232,10 @@ function Fasfield() {
       }
       y += Math.max(lines.length * lineHeight, imageHeight) + 10;
     }
-    return doc.output("blob");
+
+    // perbaikan ⬇
+    const pdfBlob = new Blob([doc.output("arraybuffer")], { type: "application/pdf" });
+    return pdfBlob;
   };
 
   // Unduh Excel
