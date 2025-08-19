@@ -9,7 +9,7 @@ import Fasfield from './pages/Fasfield';
 import Core from './pages/Core';
 import Osp from './pages/Osp';
 import Material from './pages/Material'; 
-import Boq from './pages/Boq';
+import Boq from './pages/boq';
 import Inventory from './pages/Inventory';
 import Project from './pages/Project';
 
