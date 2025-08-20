@@ -13,8 +13,7 @@ const allMaterials = [
   "Spliter 1:4 SC", "Spliter 1:8 SC", "spliter 1:16 sc",
   "ODP Pole 16 SC Single Mode (Optical Distribution Point)", "ODC 24 Port Type (Pole)", "ODC 48 Port Type (Pole)",
   "ODC 96 Port Type (Pole)", "Patchcord LC-LC 3M (SM-DX)", "Patchcord SC-LC 3M (SM-DX)", "Patchcord SC-SC 3M (SM-DX)", "Pigtail",
-  "Rosset 2Core", "Spliter 1.16", "Kabel Drop Wire (2core)",
-];
+  "Rosset 2Core", "Spliter 1.16", "Kabel Drop Wire (2core)",];
 
 const allPICs = ["KISWANTO", "ARIEF", "DENI", "AGUS SALIM", "SUHERI"];
 const allUnits = ["meter", "pcs", "pack", "unit"];

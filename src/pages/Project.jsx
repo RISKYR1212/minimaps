@@ -1,23 +1,8 @@
 // Project.jsx
 import React, { useState } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  useMapEvents,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  Button,
-  Form,
-  ListGroup,
-  Container,
-  Row,
-  Col,
-  InputGroup,
-} from "react-bootstrap";
+import { Button, Form, ListGroup, Container, Row, Col, InputGroup, } from "react-bootstrap";
 
 const Project = () => {
   const [projects, setProjects] = useState([]);
@@ -63,7 +48,7 @@ const Project = () => {
         path: [selectedPins[0].position, project.position],
       };
       setCables((prev) => [...prev, newCable]);
-      setSelectedPins([]); // reset pilihan
+      setSelectedPins([]); 
     } else {
       setSelectedPins([project]);
     }
