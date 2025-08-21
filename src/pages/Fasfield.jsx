@@ -146,14 +146,14 @@ const resizeImage = async (file, max = 1280, quality = 0.8) => {
         c.height = dstH;
       }
       switch (o) {
-        case 2: ctx.transform(-1, 0, 0, 1, c.width, 0); break; // flip H
-        case 3: ctx.transform(-1, 0, 0, -1, c.width, c.height); break; // 180
-        case 4: ctx.transform(1, 0, 0, -1, 0, c.height); break; // flip V
-        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break; // 90 + flip H
-        case 6: ctx.transform(0, 1, -1, 0, c.height, 0); break; // 90
-        case 7: ctx.transform(0, -1, -1, 0, c.height, c.width); break; // 270 + flip H
-        case 8: ctx.transform(0, -1, 1, 0, 0, c.width); break; // 270
-        default: break; // 1: normal
+        case 2: ctx.transform(-1, 0, 0, 1, c.width, 0); break; 
+        case 3: ctx.transform(-1, 0, 0, -1, c.width, c.height); break; 
+        case 4: ctx.transform(1, 0, 0, -1, 0, c.height); break; 
+        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break; 
+        case 6: ctx.transform(0, 1, -1, 0, c.height, 0); break; 
+        case 7: ctx.transform(0, -1, -1, 0, c.height, c.width); break; 
+        case 8: ctx.transform(0, -1, 1, 0, 0, c.width); break; 
+        default: break; 
       }
     };
     setCanvasForOrientation(orientation);
