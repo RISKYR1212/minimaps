@@ -8,11 +8,9 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import EXIF from "exif-js";
 
-// Konstanta
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
-// Template temuan kosong
 const blankTemuan = () => ({
   deskripsi: "",
   tindakan: "",
@@ -23,7 +21,7 @@ const blankTemuan = () => ({
   statusGPS: ""
 });
 
-// Baca GPS dari metadata foto (EXIF)
+// Baca GPS dari EXIF
 const getGPSFromImage = (file) => {
   return new Promise((resolve) => {
     EXIF.getData(file, function () {
@@ -62,12 +60,12 @@ const ambilGPS = () =>
     );
   });
 
-// Resize gambar sebelum simpan
+// Resize gambar jadi base64
 const resizeImage = (file, max = 600, q = 0.8) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const img = new window.Image(); // ✅ gunakan window.Image agar tidak bentrok
+      const img = new window.Image();
       img.onload = () => {
         try {
           const c = document.createElement("canvas");
@@ -90,32 +88,36 @@ const resizeImage = (file, max = 600, q = 0.8) =>
   });
 
 function Fasfield() {
-  const [form, setForm] = useState({
-    tanggal: "",
-    wilayah: "",
-    area: "",
-    temuanList: [blankTemuan()],
-    filename: "patroli",
-    _index: null
+  const [form, setForm] = useState(() => {
+    // Ambil data form dari localStorage kalau ada
+    const saved = localStorage.getItem("patroliForm");
+    return saved
+      ? JSON.parse(saved)
+      : { tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null };
   });
+
   const [editMode, setEditMode] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [data, setData] = useState([]);
 
-  // Ambil data awal dari endpoint
+  // Simpan otomatis ke localStorage setiap ada perubahan form
+  useEffect(() => {
+    localStorage.setItem("patroliForm", JSON.stringify(form));
+  }, [form]);
+
+  // Ambil data awal dari Google Sheets
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`${endpoint}?sheet=patrolli`);
         if (res.data.ok) setData(res.data.records);
       } catch (err) {
-        console.error("Gagal mengambil data:", err);
+        console.error("Gagal ambil data:", err);
       }
     };
     fetchData();
   }, []);
 
-  // Update satu field pada temuan tertentu
   const updateTemuan = (i, key, val) => {
     setForm((prev) => {
       const updated = [...prev.temuanList];
@@ -124,7 +126,7 @@ function Fasfield() {
     });
   };
 
-  // Ambil foto dari kamera/galeri
+  // Ambil foto
   const ambilFoto = async (i, capture = false) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -138,7 +140,7 @@ function Fasfield() {
       let koordinat = "";
       try {
         const gpsFromExif = await getGPSFromImage(file);
-        koordinat = gpsFromExif || await ambilGPS();
+        koordinat = gpsFromExif || (await ambilGPS());
       } catch (err) {
         updateTemuan(i, "statusGPS", `Gagal ambil lokasi (${err})`);
       }
@@ -152,7 +154,7 @@ function Fasfield() {
             foto: file,
             fotoThumb: thumb,
             koordinat,
-            statusGPS: "Lokasi berhasil diambil",
+            statusGPS: "Lokasi berhasil diambil"
           };
           return { ...p, temuanList: updated };
         });
@@ -164,36 +166,39 @@ function Fasfield() {
     input.click();
   };
 
-  // Masuk ke mode edit data
   const handleEditTemuan = (row) => {
     setForm({
       tanggal: row.tanggal,
       wilayah: row.wilayah,
       area: row.area,
-      temuanList: [{
-        deskripsi: row.deskripsi,
-        tindakan: row.tindakan,
-        hasil: row.hasil,
-        foto: null,
-        fotoThumb: "",
-        koordinat: row.koordinat,
-        statusGPS: ""
-      }],
+      temuanList: [
+        {
+          deskripsi: row.deskripsi,
+          tindakan: row.tindakan,
+          hasil: row.hasil,
+          foto: null,
+          fotoThumb: "",
+          koordinat: row.koordinat,
+          statusGPS: ""
+        }
+      ],
       filename: "patroli",
       _index: row._index
     });
     setEditMode(true);
   };
 
-  // Generate PDF blob
+  // Generate PDF
   const generatePDFBlob = async () => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     doc.setFont("times", "");
 
     try {
-      const img = new window.Image(); // ✅ gunakan window.Image
+      const img = new window.Image();
       img.src = logoURL;
-      await new Promise((resolve) => { img.onload = resolve; });
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
     } catch {}
 
@@ -207,13 +212,19 @@ function Fasfield() {
 
     let y = 72;
     for (const [i, t] of form.temuanList.entries()) {
-      if (y > 240) { doc.addPage(); y = 20; }
+      if (y > 240) {
+        doc.addPage();
+        y = 20;
+      }
       doc.setFontSize(13);
       doc.text(`Temuan #${i + 1}`, 14, y);
       y += 6;
 
-      const textX = 14, imageX = 140;
-      const textWidth = 90, imageWidth = 50, imageHeight = 45;
+      const textX = 14,
+        imageX = 140;
+      const textWidth = 90,
+        imageWidth = 50,
+        imageHeight = 45;
       const lineHeight = 6;
 
       const lines = [
@@ -262,36 +273,58 @@ function Fasfield() {
         <Card.Body>
           <Form>
             <Form.Group className="mb-3">
-              <Form.Control type="date" value={form.tanggal}
-                onChange={e => setForm({ ...form, tanggal: e.target.value })} />
+              <Form.Control
+                type="date"
+                value={form.tanggal}
+                onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+              />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Control placeholder="Wilayah" value={form.wilayah}
-                onChange={e => setForm({ ...form, wilayah: e.target.value })} />
+              <Form.Control
+                placeholder="Wilayah"
+                value={form.wilayah}
+                onChange={(e) => setForm({ ...form, wilayah: e.target.value })}
+              />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Control placeholder="Area" value={form.area}
-                onChange={e => setForm({ ...form, area: e.target.value })} />
+              <Form.Control
+                placeholder="Area"
+                value={form.area}
+                onChange={(e) => setForm({ ...form, area: e.target.value })}
+              />
             </Form.Group>
 
             {form.temuanList.map((t, i) => (
               <Card key={i} className="mb-3">
                 <Card.Body>
                   <Form.Group className="mb-2">
-                    <Form.Control placeholder="Deskripsi" value={t.deskripsi}
-                      onChange={e => updateTemuan(i, "deskripsi", e.target.value)} />
+                    <Form.Control
+                      placeholder="Deskripsi"
+                      value={t.deskripsi}
+                      onChange={(e) => updateTemuan(i, "deskripsi", e.target.value)}
+                    />
                   </Form.Group>
                   <Form.Group className="mb-2">
-                    <Form.Control placeholder="Tindakan" value={t.tindakan}
-                      onChange={e => updateTemuan(i, "tindakan", e.target.value)} />
+                    <Form.Control
+                      placeholder="Tindakan"
+                      value={t.tindakan}
+                      onChange={(e) => updateTemuan(i, "tindakan", e.target.value)}
+                    />
                   </Form.Group>
                   <Form.Group className="mb-2">
-                    <Form.Control placeholder="Hasil" value={t.hasil}
-                      onChange={e => updateTemuan(i, "hasil", e.target.value)} />
+                    <Form.Control
+                      placeholder="Hasil"
+                      value={t.hasil}
+                      onChange={(e) => updateTemuan(i, "hasil", e.target.value)}
+                    />
                   </Form.Group>
                   <div className="d-flex gap-2 mb-2">
-                    <Button size="sm" onClick={() => ambilFoto(i, true)}>Kamera</Button>
-                    <Button size="sm" variant="secondary" onClick={() => ambilFoto(i, false)}>Galeri</Button>
+                    <Button size="sm" onClick={() => ambilFoto(i, true)}>
+                      Kamera
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => ambilFoto(i, false)}>
+                      Galeri
+                    </Button>
                   </div>
                   {t.fotoThumb && (
                     <img src={t.fotoThumb} alt="preview" className="mb-2 img-fluid rounded" />
@@ -301,9 +334,13 @@ function Fasfield() {
               </Card>
             ))}
 
-            <Button onClick={() =>
-              setForm(p => ({ ...p, temuanList: [...p.temuanList, blankTemuan()] }))
-            }>Tambah Temuan</Button>
+            <Button
+              onClick={() =>
+                setForm((p) => ({ ...p, temuanList: [...p.temuanList, blankTemuan()] }))
+              }
+            >
+              Tambah Temuan
+            </Button>
           </Form>
         </Card.Body>
       </Card>
@@ -311,50 +348,73 @@ function Fasfield() {
       {/* Tombol Aksi */}
       <Row className="g-2 mb-4">
         <Col>
-          <Button className="w-100" onClick={async () => {
-            const blob = await generatePDFBlob();
-            const url = URL.createObjectURL(blob);
-            setPdfPreviewUrl(url);
-          }}>Lihat PDF</Button>
+          <Button
+            className="w-100"
+            onClick={async () => {
+              const blob = await generatePDFBlob();
+              const url = URL.createObjectURL(blob);
+              setPdfPreviewUrl(url);
+            }}
+          >
+            Lihat PDF
+          </Button>
         </Col>
         <Col>
-          <Button className="w-100" onClick={async () => {
-            const blob = await generatePDFBlob();
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `${form.filename || "laporan"}.pdf`;
-            a.click();
-          }}>Unduh PDF</Button>
+          <Button
+            className="w-100"
+            onClick={async () => {
+              const blob = await generatePDFBlob();
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = `${form.filename || "laporan"}.pdf`;
+              a.click();
+            }}
+          >
+            Unduh PDF
+          </Button>
         </Col>
         <Col>
-          <Button className="w-100" onClick={async () => {
-            try {
-              const isEdit = editMode && form._index;
-              for (let t of form.temuanList) {
-                const payload = {
-                  sheet: "patrolli",
-                  tanggal: form.tanggal,
-                  wilayah: form.wilayah,
-                  area: form.area,
-                  deskripsi: t.deskripsi,
-                  tindakan: t.tindakan,
-                  hasil: t.hasil,
-                  koordinat: t.koordinat
-                };
-                if (isEdit) {
-                  payload.edit = "edit";
-                  payload.index = form._index;
+          <Button
+            className="w-100"
+            onClick={async () => {
+              try {
+                const isEdit = editMode && form._index;
+                for (let t of form.temuanList) {
+                  const payload = {
+                    sheet: "patrolli",
+                    tanggal: form.tanggal,
+                    wilayah: form.wilayah,
+                    area: form.area,
+                    deskripsi: t.deskripsi,
+                    tindakan: t.tindakan,
+                    hasil: t.hasil,
+                    koordinat: t.koordinat
+                  };
+                  if (isEdit) {
+                    payload.edit = "edit";
+                    payload.index = form._index;
+                  }
+                  const res = await axios.post(endpoint, new URLSearchParams(payload));
+                  if (!res.data.ok) throw new Error(res.data.message);
                 }
-                const res = await axios.post(endpoint, new URLSearchParams(payload));
-                if (!res.data.ok) throw new Error(res.data.message);
+                alert(isEdit ? "Data berhasil diedit!" : "Data berhasil dikirim!");
+                setForm({
+                  tanggal: "",
+                  wilayah: "",
+                  area: "",
+                  temuanList: [blankTemuan()],
+                  filename: "patroli",
+                  _index: null
+                });
+                setEditMode(false);
+                localStorage.removeItem("patroliForm"); // reset cache
+              } catch (err) {
+                alert("Gagal kirim data: " + err.message);
               }
-              alert(isEdit ? "Data berhasil diedit!" : "Data berhasil dikirim!");
-              setForm({ tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null });
-              setEditMode(false);
-            } catch (err) {
-              alert("Gagal kirim data: " + err.message);
-            }
-          }}>{editMode ? "Simpan Perubahan" : "Kirim ke Google Sheets"}</Button>
+            }}
+          >
+            {editMode ? "Simpan Perubahan" : "Kirim ke Google Sheets"}
+          </Button>
         </Col>
         <Col>
           <Button className="w-100" variant="success" onClick={downloadExcel}>
@@ -366,7 +426,11 @@ function Fasfield() {
       {/* Preview PDF */}
       {pdfPreviewUrl && (
         <div className="mb-4">
-          <iframe src={pdfPreviewUrl} title="PDF Preview" style={{ width: "100%", height: "500px" }}></iframe>
+          <iframe
+            src={pdfPreviewUrl}
+            title="PDF Preview"
+            style={{ width: "100%", height: "500px" }}
+          ></iframe>
         </div>
       )}
 
@@ -377,13 +441,24 @@ function Fasfield() {
           <Table striped bordered hover responsive size="sm">
             <thead>
               <tr>
-                <th>#</th><th>Tanggal</th><th>Wilayah</th><th>Area</th>
-                <th>Deskripsi</th><th>Tindakan</th><th>Hasil</th><th>Koordinat</th><th>Edit</th>
+                <th>#</th>
+                <th>Tanggal</th>
+                <th>Wilayah</th>
+                <th>Area</th>
+                <th>Deskripsi</th>
+                <th>Tindakan</th>
+                <th>Hasil</th>
+                <th>Koordinat</th>
+                <th>Edit</th>
               </tr>
             </thead>
             <tbody>
               {data.length === 0 ? (
-                <tr><td colSpan="9" className="text-center">Belum ada data</td></tr>
+                <tr>
+                  <td colSpan="9" className="text-center">
+                    Belum ada data
+                  </td>
+                </tr>
               ) : (
                 data.map((row, i) => (
                   <tr key={i}>
@@ -396,7 +471,9 @@ function Fasfield() {
                     <td>{row.hasil}</td>
                     <td>{row.koordinat}</td>
                     <td>
-                      <Button size="sm" variant="warning" onClick={() => handleEditTemuan(row)}>Edit</Button>
+                      <Button size="sm" variant="warning" onClick={() => handleEditTemuan(row)}>
+                        Edit
+                      </Button>
                     </td>
                   </tr>
                 ))
