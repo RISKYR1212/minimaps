@@ -128,43 +128,47 @@ function Fasfield() {
 
   // Ambil foto
   const ambilFoto = async (i, capture = false) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    if (capture) input.capture = "environment";
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  if (capture) input.capture = "environment";
 
-    input.onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-      let koordinat = "";
-      try {
-        const gpsFromExif = await getGPSFromImage(file);
-        koordinat = gpsFromExif || (await ambilGPS());
-      } catch (err) {
-        updateTemuan(i, "statusGPS", `Gagal ambil lokasi (${err})`);
-      }
+    console.log("File dari HP:", file);
 
-      try {
-        const thumb = await resizeImage(file);
-        setForm((p) => {
-          const updated = [...p.temuanList];
-          updated[i] = {
-            ...updated[i],
-            foto: file,
-            fotoThumb: thumb,
-            koordinat,
-            statusGPS: "Lokasi berhasil diambil"
-          };
-          return { ...p, temuanList: updated };
-        });
-      } catch (err) {
-        alert("Gagal memproses gambar: " + err);
-      }
-    };
+    let koordinat = "";
+    try {
+      const gpsFromExif = await getGPSFromImage(file);
+      koordinat = gpsFromExif || (await ambilGPS());
+    } catch (err) {
+      koordinat = "";
+      updateTemuan(i, "statusGPS", `Lokasi tidak tersedia (${err})`);
+    }
 
-    input.click();
+    try {
+      const thumb = await resizeImage(file, 800, 0.7); // resize lebih kecil agar aman di HP
+      setForm((p) => {
+        const updated = [...p.temuanList];
+        updated[i] = {
+          ...updated[i],
+          foto: file,
+          fotoThumb: thumb,
+          koordinat,
+          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia"
+        };
+        return { ...p, temuanList: updated };
+      });
+    } catch (err) {
+      alert("Gagal memproses gambar: " + err);
+    }
   };
+
+  input.click();
+};
+
 
   const handleEditTemuan = (row) => {
     setForm({
