@@ -1,31 +1,32 @@
 // src/pages/Fasfield.jsx
-import React, { useState, useEffect } from "react";
-import { jsPDF } from "jspdf";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import logoURL from "../assets/logo-jlm.jpeg";
-import { Container, Row, Col, Form, Button, Card, Table } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Card, Table, Spinner } from "react-bootstrap";
+import { jsPDF } from "jspdf";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import EXIF from "exif-js";
 import heic2any from "heic2any";
+import logoURL from "../assets/logo-jlm.jpeg";
 
+/* ======================== KONFIGURASI ======================== */
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
+/* ======================== UTIL DATA ========================= */
 const blankTemuan = () => ({
   deskripsi: "",
   tindakan: "",
   hasil: "",
-  foto: null,
-  fotoThumb: "",
+  fotoFile: null,       // File asli (tidak dikirim ke Sheets)
+  fotoThumb: "",        // base64 JPEG hasil resize+orientasi (untuk preview & PDF)
   koordinat: "",
-  statusGPS: ""
+  statusGPS: "",
 });
 
-/* ----------------------- UTIL: GPS dari EXIF (JPEG) ----------------------- */
+/* ===================== UTIL: GPS dari EXIF =================== */
 const getGPSFromImage = (file) =>
   new Promise((resolve) => {
-    // EXIF umumnya hanya terbaca di JPEG. Untuk selain itu, langsung resolve null.
     if (!file || file.type !== "image/jpeg") return resolve(null);
     try {
       EXIF.getData(file, function () {
@@ -43,9 +44,7 @@ const getGPSFromImage = (file) =>
               if (ref === "S" || ref === "W") dd *= -1;
               return dd;
             };
-            const latitude = toDD(lat, latRef);
-            const longitude = toDD(lon, lonRef);
-            resolve(`${latitude}, ${longitude}`);
+            resolve(`${toDD(lat, latRef)}, ${toDD(lon, lonRef)}`);
           } else {
             resolve(null);
           }
@@ -58,21 +57,21 @@ const getGPSFromImage = (file) =>
     }
   });
 
-/* ----------------------- UTIL: GPS dari browser ----------------------- */
-const ambilGPS = () =>
+/* =============== UTIL: GPS Browser (fallback) =============== */
+const ambilGPSBrowser = () =>
   new Promise((ok) => {
     if (!navigator.geolocation) return ok(null);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => ok(`${coords.latitude}, ${coords.longitude}`),
       () => ok(null),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   });
 
-/* ----------------------- UTIL: Baca orientasi EXIF ----------------------- */
+/* =============== UTIL: EXIF Orientation Number ============== */
 const getExifOrientation = (file) =>
   new Promise((resolve) => {
-    if (!file || file.type !== "image/jpeg") return resolve(1); // default normal
+    if (!file || file.type !== "image/jpeg") return resolve(1);
     try {
       EXIF.getData(file, function () {
         const o = EXIF.getTag(this, "Orientation");
@@ -83,23 +82,21 @@ const getExifOrientation = (file) =>
     }
   });
 
-/* ----------------------- UTIL: Konversi ke JPEG bila HEIC/HEIF ----------------------- */
-const ensureJpeg = async (file) => {
+/* =============== UTIL: Konversi HEIC → JPEG ================= */
+async function ensureJpeg(file) {
   if (!file) return file;
   if (file.type === "image/heic" || file.type === "image/heif") {
     const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
     return new File([converted], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
   }
-  return file; // jpg/png/webp dll tetap
-};
+  return file;
+}
 
-/* ----------------------- UTIL: Resize aman + perbaiki orientasi ----------------------- */
-const resizeImage = async (file, max = 1280, quality = 0.8) => {
-  // Buat blob/URL untuk dibaca
+/* === UTIL: Resize + perbaikan orientasi untuk preview/PDF === */
+async function resizeWithOrientation(file, max = 1280, quality = 0.82) {
   const blob = file instanceof Blob ? file : new Blob([file], { type: file.type || "image/jpeg" });
   const url = URL.createObjectURL(blob);
   try {
-    // Coba pakai createImageBitmap (lebih hemat memori di HP)
     let bitmap = null;
     if ("createImageBitmap" in window) {
       try {
@@ -108,8 +105,6 @@ const resizeImage = async (file, max = 1280, quality = 0.8) => {
         bitmap = null;
       }
     }
-
-    // Fallback ke <img> bila createImageBitmap gagal/tidak ada
     let imgEl = null;
     if (!bitmap) {
       imgEl = await new Promise((resolve, reject) => {
@@ -120,165 +115,167 @@ const resizeImage = async (file, max = 1280, quality = 0.8) => {
       });
     }
 
-    // Ukuran awal
     const srcW = bitmap ? bitmap.width : imgEl.width;
     const srcH = bitmap ? bitmap.height : imgEl.height;
     const scale = Math.min(1, max / Math.max(srcW, srcH));
     const dstW = Math.max(1, Math.round(srcW * scale));
     const dstH = Math.max(1, Math.round(srcH * scale));
 
-    // Ambil orientasi untuk JPEG
     const orientation = await getExifOrientation(file);
 
-    // Siapkan kanvas
-    const c = document.createElement("canvas");
-    const ctx = c.getContext("2d");
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
-    // Atur kanvas & transform sesuai orientasi
-    const setCanvasForOrientation = (o) => {
-      // referensi EXIF Orientation 1..8
-      // 1=normal, 6=rotate 90 CW, 8=rotate 270 CW, 3=rotate 180, 2/4/5/7 include flip
-      if (o === 5 || o === 6 || o === 7 || o === 8) {
-        c.width = dstH;
-        c.height = dstW;
-      } else {
-        c.width = dstW;
-        c.height = dstH;
-      }
-      switch (o) {
-        case 2: ctx.transform(-1, 0, 0, 1, c.width, 0); break; 
-        case 3: ctx.transform(-1, 0, 0, -1, c.width, c.height); break; 
-        case 4: ctx.transform(1, 0, 0, -1, 0, c.height); break; 
-        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break; 
-        case 6: ctx.transform(0, 1, -1, 0, c.height, 0); break; 
-        case 7: ctx.transform(0, -1, -1, 0, c.height, c.width); break; 
-        case 8: ctx.transform(0, -1, 1, 0, 0, c.width); break; 
-        default: break; 
-      }
-    };
-    setCanvasForOrientation(orientation);
+    const needsSwap = orientation >= 5 && orientation <= 8;
+    canvas.width = needsSwap ? dstH : dstW;
+    canvas.height = needsSwap ? dstW : dstH;
 
-    // Gambar
-    if (bitmap) {
-      ctx.drawImage(bitmap, 0, 0, srcW, srcH, 0, 0, orientation >= 5 && orientation <= 8 ? dstH : dstW, orientation >= 5 && orientation <= 8 ? dstW : dstH);
-    } else {
-      ctx.drawImage(imgEl, 0, 0, srcW, srcH, 0, 0, orientation >= 5 && orientation <= 8 ? dstH : dstW, orientation >= 5 && orientation <= 8 ? dstW : dstH);
+    switch (orientation) {
+      case 2: ctx.transform(-1, 0, 0, 1, canvas.width, 0); break;
+      case 3: ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height); break;
+      case 4: ctx.transform(1, 0, 0, -1, 0, canvas.height); break;
+      case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+      case 6: ctx.transform(0, 1, -1, 0, canvas.height, 0); break;
+      case 7: ctx.transform(0, -1, -1, 0, canvas.height, canvas.width); break;
+      case 8: ctx.transform(0, -1, 1, 0, 0, canvas.width); break;
+      default: break;
     }
 
-    // Hasil JPEG base64
-    return c.toDataURL("image/jpeg", quality);
+    if (bitmap) {
+      ctx.drawImage(bitmap, 0, 0, srcW, srcH, 0, 0, needsSwap ? dstH : dstW, needsSwap ? dstW : dstH);
+    } else {
+      ctx.drawImage(imgEl, 0, 0, srcW, srcH, 0, 0, needsSwap ? dstH : dstW, needsSwap ? dstW : dstH);
+    }
+
+    return canvas.toDataURL("image/jpeg", quality);
   } finally {
     URL.revokeObjectURL(url);
   }
-};
+}
 
-function Fasfield() {
+/* ========================== KOMPONEN ======================== */
+export function Fasfield() {
   const [form, setForm] = useState(() => {
-    const saved = localStorage.getItem("patroliForm");
-    return saved
-      ? JSON.parse(saved)
-      : { tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null };
+    try {
+      const saved = localStorage.getItem("patroliForm");
+      return saved
+        ? JSON.parse(saved)
+        : { tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null };
+    } catch {
+      return { tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null };
+    }
   });
 
   const [editMode, setEditMode] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [data, setData] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
 
+  // Simpan form di localStorage
   useEffect(() => {
     localStorage.setItem("patroliForm", JSON.stringify(form));
   }, [form]);
 
+  // Ambil data dari GAS (array guard)
   useEffect(() => {
-    const fetchData = async () => {
+    (async () => {
+      if (!endpoint) return;
       try {
-        const res = await axios.get(`${endpoint}?sheet=patrolli`);
-        if (res.data?.ok) setData(res.data.records || []);
+        setLoadingData(true);
+        const res = await axios.get(`${endpoint}?sheet=patrolli`, { timeout: 20000 });
+        const rows = res?.data?.records;
+        setData(Array.isArray(rows) ? rows : []);
       } catch (err) {
         console.error("Gagal ambil data:", err);
+        setData([]);
+      } finally {
+        setLoadingData(false);
       }
-    };
-    fetchData();
+    })();
   }, []);
 
+  // Update field temuan
   const updateTemuan = (i, key, val) => {
     setForm((prev) => {
-      const updated = [...prev.temuanList];
-      updated[i] = { ...updated[i], [key]: val };
-      return { ...prev, temuanList: updated };
+      const list = [...prev.temuanList];
+      list[i] = { ...list[i], [key]: val };
+      return { ...prev, temuanList: list };
     });
   };
 
-  /* ----------------------- Ambil foto: robust di HP & laptop ----------------------- */
-  const ambilFoto = async (i, capture = false) => {
+  /* ================== PILIH/AMBIL FOTO (HP/Laptop) ================== */
+  const pickImage = async (idx, useCamera = false) => {
+    // Buat input file by click (user gesture → aman di iOS/Android)
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*,.heic,.heif"; // semua format
-    if (capture) input.capture = "environment";
+    input.accept = "image/*,.heic,.heif";
+    if (useCamera) input.setAttribute("capture", "environment"); // kamera belakang di HP yang support
 
     input.onchange = async (e) => {
       let file = e.target.files && e.target.files[0];
       if (!file) return;
 
       try {
-        // 1) Normalisasi file → JPEG bila HEIC/HEIF
+        // 1) HEIC → JPEG bila perlu
         file = await ensureJpeg(file);
 
-        // 2) Ambil GPS (EXIF jika JPEG, lalu browser sebagai fallback)
+        // 2) Ambil GPS
         let koordinat = "";
         try {
-          const gpsExif = await getGPSFromImage(file);
-          const gpsBrowser = gpsExif ? null : await ambilGPS();
-          koordinat = gpsExif || gpsBrowser || "";
+          const exifGps = await getGPSFromImage(file);
+          koordinat = exifGps || (await ambilGPSBrowser()) || "";
         } catch {
           koordinat = "";
         }
 
-        // 3) Resize aman + perbaiki orientasi
-        const thumb = await resizeImage(file, 1280, 0.8);
+        // 3) Resize + perbaikan orientasi (untuk preview & PDF)
+        const thumb = await resizeWithOrientation(file, 1280, 0.82);
 
-        // 4) Update state (preview selalu muncul meski GPS gagal)
+        // 4) Update state
         setForm((p) => {
-          const updated = [...p.temuanList];
-          updated[i] = {
-            ...updated[i],
-            foto: file,
+          const list = [...p.temuanList];
+          list[idx] = {
+            ...list[idx],
+            fotoFile: file,
             fotoThumb: thumb,
             koordinat,
-            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia / ditolak"
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia / ditolak",
           };
-          return { ...p, temuanList: updated };
+          return { ...p, temuanList: list };
         });
       } catch (err) {
         console.error("Gagal memproses gambar:", err);
-        alert("Gagal memproses gambar. Coba pilih ulang atau gunakan format JPG/PNG.");
+        alert("Gagal memproses gambar. Coba pilih ulang atau gunakan format JPG/PNG/HEIC.");
       }
     };
 
     input.click();
   };
 
-  // Generate PDF
+  /* ========================= PDF GENERATOR ========================= */
   const generatePDFBlob = async () => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    doc.setFont("times", "");
+    // Gunakan font yang pasti ada di jsPDF agar tidak warning
+    doc.setFont("helvetica", "normal");
 
+    // Logo (optional)
     try {
-      const img = new window.Image();
+      const img = new Image();
       img.src = logoURL;
       await new Promise((resolve) => {
         img.onload = resolve;
         img.onerror = resolve;
       });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch {}
+    } catch { }
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
 
     doc.setFontSize(12);
-    doc.text(`Tanggal: ${form.tanggal}`, 14, 50);
-    doc.text(`Wilayah: ${form.wilayah}`, 14, 56);
-    doc.text(`Area: ${form.area}`, 14, 62);
+    doc.text(`Tanggal: ${form.tanggal || "-"}`, 14, 50);
+    doc.text(`Wilayah: ${form.wilayah || "-"}`, 14, 56);
+    doc.text(`Area: ${form.area || "-"}`, 14, 62);
 
     let y = 72;
     for (const [idx, t] of form.temuanList.entries()) {
@@ -290,15 +287,18 @@ function Fasfield() {
       doc.text(`Temuan #${idx + 1}`, 14, y);
       y += 6;
 
-      const textX = 14, imageX = 140;
-      const textWidth = 90, imageWidth = 50, imageHeight = 45;
+      const textX = 14,
+        imageX = 140;
+      const textWidth = 90,
+        imageWidth = 50,
+        imageHeight = 45;
       const lineHeight = 6;
 
       const lines = [
         ...doc.splitTextToSize(`Deskripsi: ${t.deskripsi || "-"}`, textWidth),
         ...doc.splitTextToSize(`Tindakan: ${t.tindakan || "-"}`, textWidth),
         ...doc.splitTextToSize(`Hasil: ${t.hasil || "-"}`, textWidth),
-        ...doc.splitTextToSize(`Koordinat: ${t.koordinat || "-"}`, textWidth)
+        ...doc.splitTextToSize(`Koordinat: ${t.koordinat || "-"}`, textWidth),
       ];
 
       doc.setFontSize(11);
@@ -321,7 +321,7 @@ function Fasfield() {
     return doc.output("blob");
   };
 
-  // Unduh Excel
+  /* ====================== UNDUH EXCEL (DATA) ====================== */
   const downloadExcel = () => {
     if (!data.length) return alert("Tidak ada data untuk diunduh");
     const ws = XLSX.utils.json_to_sheet(data);
@@ -331,28 +331,71 @@ function Fasfield() {
     saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "data_patrol.xlsx");
   };
 
+  /* ====================== EDIT DARI TABEL ====================== */
   const handleEditTemuan = (row) => {
     setForm({
-      tanggal: row.tanggal,
-      wilayah: row.wilayah,
-      area: row.area,
+      tanggal: row.tanggal || "",
+      wilayah: row.wilayah || "",
+      area: row.area || "",
       temuanList: [
         {
-          deskripsi: row.deskripsi,
-          tindakan: row.tindakan,
-          hasil: row.hasil,
-          foto: null,
+          deskripsi: row.deskripsi || "",
+          tindakan: row.tindakan || "",
+          hasil: row.hasil || "",
+          fotoFile: null,
           fotoThumb: "",
-          koordinat: row.koordinat,
-          statusGPS: ""
-        }
+          koordinat: row.koordinat || "",
+          statusGPS: "",
+        },
       ],
       filename: "patroli",
-      _index: row._index
+      _index: row._index ?? null,
     });
     setEditMode(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  /* ====================== KIRIM KE GOOGLE SHEETS ====================== */
+  const submitToSheets = async () => {
+    if (!endpoint) return alert("Endpoint Google Apps Script belum diatur.");
+    try {
+      const isEdit = editMode && form._index != null;
+
+      for (let t of form.temuanList) {
+        const payload = {
+          sheet: "patrolli",
+          tanggal: form.tanggal || "",
+          wilayah: form.wilayah || "",
+          area: form.area || "",
+          deskripsi: t.deskripsi || "",
+          tindakan: t.tindakan || "",
+          hasil: t.hasil || "",
+          koordinat: t.koordinat || "",
+        };
+        if (isEdit) {
+          payload.edit = "edit";
+          payload.index = form._index;
+        }
+        // Kirim sebagai x-www-form-urlencoded
+        const res = await axios.post(endpoint, new URLSearchParams(payload), {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          timeout: 20000,
+        });
+        if (!res.data?.ok) throw new Error(res.data?.message || "Gagal menulis data");
+      }
+
+      alert(isEdit ? "Data berhasil diperbarui!" : "Data berhasil dikirim!");
+      // Reset form setelah kirim
+      setForm({ tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null });
+      setEditMode(false);
+      localStorage.removeItem("patroliForm");
+    } catch (err) {
+      console.error(err);
+      alert("Gagal kirim data: " + (err?.message || "Unknown error"));
+    }
+  };
+
+  /* =========================== RENDER UI =========================== */
   return (
     <Container className="py-3">
       <h4 className="text-center mb-3">Laporan Patroli</h4>
@@ -361,27 +404,35 @@ function Fasfield() {
       <Card className="mb-4">
         <Card.Body>
           <Form>
-            <Form.Group className="mb-3">
-              <Form.Control
-                type="date"
-                value={form.tanggal}
-                onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Control
-                placeholder="Wilayah"
-                value={form.wilayah}
-                onChange={(e) => setForm({ ...form, wilayah: e.target.value })}
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Control
-                placeholder="Area"
-                value={form.area}
-                onChange={(e) => setForm({ ...form, area: e.target.value })}
-              />
-            </Form.Group>
+            <Row className="g-2">
+              <Col xs={12} md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Control
+                    type="date"
+                    value={form.tanggal}
+                    onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+              <Col xs={12} md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Control
+                    placeholder="Wilayah"
+                    value={form.wilayah}
+                    onChange={(e) => setForm({ ...form, wilayah: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+              <Col xs={12} md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Control
+                    placeholder="Area"
+                    value={form.area}
+                    onChange={(e) => setForm({ ...form, area: e.target.value })}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
 
             {form.temuanList.map((t, i) => (
               <Card key={i} className="mb-3">
@@ -409,31 +460,30 @@ function Fasfield() {
                   </Form.Group>
 
                   <div className="d-flex gap-2 mb-2">
-                    <Button size="sm" onClick={() => ambilFoto(i, true)}>
+                    <Button size="sm" onClick={() => pickImage(i, true)}>
                       Kamera
                     </Button>
-                    <Button size="sm" variant="secondary" onClick={() => ambilFoto(i, false)}>
+                    <Button size="sm" variant="secondary" onClick={() => pickImage(i, false)}>
                       Galeri
                     </Button>
                   </div>
 
-                  {t.fotoThumb && (
+                  {t.fotoThumb ? (
                     <img
                       src={t.fotoThumb}
                       alt="preview"
                       className="mb-2 img-fluid rounded"
                       style={{ maxHeight: 260, objectFit: "contain" }}
                     />
-                  )}
-                  <div className="text-muted small mb-2">{t.statusGPS}</div>
+                  ) : null}
+                  <div className="text-muted small mb-1">{t.statusGPS}</div>
                 </Card.Body>
               </Card>
             ))}
 
             <Button
-              onClick={() =>
-                setForm((p) => ({ ...p, temuanList: [...p.temuanList, blankTemuan()] }))
-              }
+              onClick={() => setForm((p) => ({ ...p, temuanList: [...p.temuanList, blankTemuan()] }))}
+              variant="outline-primary"
             >
               Tambah Temuan
             </Button>
@@ -443,7 +493,7 @@ function Fasfield() {
 
       {/* Tombol Aksi */}
       <Row className="g-2 mb-4">
-        <Col>
+        <Col xs={12} md={3}>
           <Button
             className="w-100"
             onClick={async () => {
@@ -455,7 +505,7 @@ function Fasfield() {
             Lihat PDF
           </Button>
         </Col>
-        <Col>
+        <Col xs={12} md={3}>
           <Button
             className="w-100"
             onClick={async () => {
@@ -470,50 +520,12 @@ function Fasfield() {
             Unduh PDF
           </Button>
         </Col>
-        <Col>
-          <Button
-            className="w-100"
-            onClick={async () => {
-              try {
-                const isEdit = editMode && form._index;
-                for (let t of form.temuanList) {
-                  const payload = {
-                    sheet: "patrolli",
-                    tanggal: form.tanggal,
-                    wilayah: form.wilayah,
-                    area: form.area,
-                    deskripsi: t.deskripsi,
-                    tindakan: t.tindakan,
-                    hasil: t.hasil,
-                    koordinat: t.koordinat
-                  };
-                  if (isEdit) {
-                    payload.edit = "edit";
-                    payload.index = form._index;
-                  }
-                  const res = await axios.post(endpoint, new URLSearchParams(payload));
-                  if (!res.data?.ok) throw new Error(res.data?.message || "Gagal menulis data");
-                }
-                alert(isEdit ? "Data berhasil diedit!" : "Data berhasil dikirim!");
-                setForm({
-                  tanggal: "",
-                  wilayah: "",
-                  area: "",
-                  temuanList: [blankTemuan()],
-                  filename: "patroli",
-                  _index: null
-                });
-                setEditMode(false);
-                localStorage.removeItem("patroliForm");
-              } catch (err) {
-                alert("Gagal kirim data: " + err.message);
-              }
-            }}
-          >
+        <Col xs={12} md={3}>
+          <Button className="w-100" onClick={submitToSheets}>
             {editMode ? "Simpan Perubahan" : "Kirim ke Google Sheets"}
           </Button>
         </Col>
-        <Col>
+        <Col xs={12} md={3}>
           <Button className="w-100" variant="success" onClick={downloadExcel}>
             Unduh Data
           </Button>
@@ -523,18 +535,17 @@ function Fasfield() {
       {/* Preview PDF */}
       {pdfPreviewUrl && (
         <div className="mb-4">
-          <iframe
-            src={pdfPreviewUrl}
-            title="PDF Preview"
-            style={{ width: "100%", height: "500px" }}
-          />
+          <iframe src={pdfPreviewUrl} title="PDF Preview" style={{ width: "100%", height: "520px" }} />
         </div>
       )}
 
       {/* Tabel Data */}
       <Card className="mb-4">
         <Card.Body>
-          <h5 className="mb-3">Data Tersimpan</h5>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <h5 className="mb-0">Data Tersimpan</h5>
+            {loadingData && <Spinner animation="border" size="sm" />}
+          </div>
           <Table striped bordered hover responsive size="sm">
             <thead>
               <tr>
@@ -550,7 +561,7 @@ function Fasfield() {
               </tr>
             </thead>
             <tbody>
-              {data.length === 0 ? (
+              {!data.length ? (
                 <tr>
                   <td colSpan="9" className="text-center">
                     Belum ada data
