@@ -7,6 +7,7 @@ import { Container, Row, Col, Form, Button, Card, Table } from "react-bootstrap"
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import EXIF from "exif-js";
+import heic2any from "heic2any";
 
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
@@ -21,75 +22,158 @@ const blankTemuan = () => ({
   statusGPS: ""
 });
 
-// Baca GPS dari EXIF
-const getGPSFromImage = (file) => {
-  return new Promise((resolve) => {
-    EXIF.getData(file, function () {
-      const lat = EXIF.getTag(this, "GPSLatitude");
-      const lon = EXIF.getTag(this, "GPSLongitude");
-      const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-      const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
-
-      if (lat && lon && latRef && lonRef) {
-        const convertDMSToDD = (dms, ref) => {
-          const deg = dms[0].numerator / dms[0].denominator;
-          const min = dms[1].numerator / dms[1].denominator;
-          const sec = dms[2].numerator / dms[2].denominator;
-          let dd = deg + min / 60 + sec / 3600;
-          if (ref === "S" || ref === "W") dd *= -1;
-          return dd;
-        };
-        const latitude = convertDMSToDD(lat, latRef);
-        const longitude = convertDMSToDD(lon, lonRef);
-        resolve(`${latitude}, ${longitude}`);
-      } else {
-        resolve(null);
-      }
-    });
+/* ----------------------- UTIL: GPS dari EXIF (JPEG) ----------------------- */
+const getGPSFromImage = (file) =>
+  new Promise((resolve) => {
+    // EXIF umumnya hanya terbaca di JPEG. Untuk selain itu, langsung resolve null.
+    if (!file || file.type !== "image/jpeg") return resolve(null);
+    try {
+      EXIF.getData(file, function () {
+        try {
+          const lat = EXIF.getTag(this, "GPSLatitude");
+          const lon = EXIF.getTag(this, "GPSLongitude");
+          const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+          const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+          if (lat && lon && latRef && lonRef) {
+            const toDD = (dms, ref) => {
+              const deg = dms[0].numerator / dms[0].denominator;
+              const min = dms[1].numerator / dms[1].denominator;
+              const sec = dms[2].numerator / dms[2].denominator;
+              let dd = deg + min / 60 + sec / 3600;
+              if (ref === "S" || ref === "W") dd *= -1;
+              return dd;
+            };
+            const latitude = toDD(lat, latRef);
+            const longitude = toDD(lon, lonRef);
+            resolve(`${latitude}, ${longitude}`);
+          } else {
+            resolve(null);
+          }
+        } catch {
+          resolve(null);
+        }
+      });
+    } catch {
+      resolve(null);
+    }
   });
-};
 
-// Ambil GPS dari browser
+/* ----------------------- UTIL: GPS dari browser ----------------------- */
 const ambilGPS = () =>
-  new Promise((ok, no) => {
-    if (!navigator.geolocation) return no("Geolocation tidak didukung browser");
+  new Promise((ok) => {
+    if (!navigator.geolocation) return ok(null);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => ok(`${coords.latitude}, ${coords.longitude}`),
-      (err) => no(err.message),
+      () => ok(null),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
 
-// Resize gambar jadi base64
-const resizeImage = (file, max = 600, q = 0.8) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new window.Image();
-      img.onload = () => {
-        try {
-          const c = document.createElement("canvas");
-          const scale = Math.min(1, max / Math.max(img.width, img.height));
-          c.width = img.width * scale;
-          c.height = img.height * scale;
-          const ctx = c.getContext("2d");
-          ctx.drawImage(img, 0, 0, c.width, c.height);
-          const dataUrl = c.toDataURL("image/jpeg", q);
-          resolve(dataUrl);
-        } catch (err) {
-          reject("Gagal konversi gambar");
-        }
-      };
-      img.onerror = () => reject("Gagal memuat gambar");
-      img.src = reader.result;
-    };
-    reader.onerror = () => reject("Gagal membaca file gambar");
-    reader.readAsDataURL(file);
+/* ----------------------- UTIL: Baca orientasi EXIF ----------------------- */
+const getExifOrientation = (file) =>
+  new Promise((resolve) => {
+    if (!file || file.type !== "image/jpeg") return resolve(1); // default normal
+    try {
+      EXIF.getData(file, function () {
+        const o = EXIF.getTag(this, "Orientation");
+        resolve(o || 1);
+      });
+    } catch {
+      resolve(1);
+    }
   });
+
+/* ----------------------- UTIL: Konversi ke JPEG bila HEIC/HEIF ----------------------- */
+const ensureJpeg = async (file) => {
+  if (!file) return file;
+  if (file.type === "image/heic" || file.type === "image/heif") {
+    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+    return new File([converted], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+  }
+  return file; // jpg/png/webp dll tetap
+};
+
+/* ----------------------- UTIL: Resize aman + perbaiki orientasi ----------------------- */
+const resizeImage = async (file, max = 1280, quality = 0.8) => {
+  // Buat blob/URL untuk dibaca
+  const blob = file instanceof Blob ? file : new Blob([file], { type: file.type || "image/jpeg" });
+  const url = URL.createObjectURL(blob);
+  try {
+    // Coba pakai createImageBitmap (lebih hemat memori di HP)
+    let bitmap = null;
+    if ("createImageBitmap" in window) {
+      try {
+        bitmap = await createImageBitmap(blob);
+      } catch {
+        bitmap = null;
+      }
+    }
+
+    // Fallback ke <img> bila createImageBitmap gagal/tidak ada
+    let imgEl = null;
+    if (!bitmap) {
+      imgEl = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("Gagal memuat gambar"));
+        img.src = url;
+      });
+    }
+
+    // Ukuran awal
+    const srcW = bitmap ? bitmap.width : imgEl.width;
+    const srcH = bitmap ? bitmap.height : imgEl.height;
+    const scale = Math.min(1, max / Math.max(srcW, srcH));
+    const dstW = Math.max(1, Math.round(srcW * scale));
+    const dstH = Math.max(1, Math.round(srcH * scale));
+
+    // Ambil orientasi untuk JPEG
+    const orientation = await getExifOrientation(file);
+
+    // Siapkan kanvas
+    const c = document.createElement("canvas");
+    const ctx = c.getContext("2d");
+
+    // Atur kanvas & transform sesuai orientasi
+    const setCanvasForOrientation = (o) => {
+      // referensi EXIF Orientation 1..8
+      // 1=normal, 6=rotate 90 CW, 8=rotate 270 CW, 3=rotate 180, 2/4/5/7 include flip
+      if (o === 5 || o === 6 || o === 7 || o === 8) {
+        c.width = dstH;
+        c.height = dstW;
+      } else {
+        c.width = dstW;
+        c.height = dstH;
+      }
+      switch (o) {
+        case 2: ctx.transform(-1, 0, 0, 1, c.width, 0); break; // flip H
+        case 3: ctx.transform(-1, 0, 0, -1, c.width, c.height); break; // 180
+        case 4: ctx.transform(1, 0, 0, -1, 0, c.height); break; // flip V
+        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break; // 90 + flip H
+        case 6: ctx.transform(0, 1, -1, 0, c.height, 0); break; // 90
+        case 7: ctx.transform(0, -1, -1, 0, c.height, c.width); break; // 270 + flip H
+        case 8: ctx.transform(0, -1, 1, 0, 0, c.width); break; // 270
+        default: break; // 1: normal
+      }
+    };
+    setCanvasForOrientation(orientation);
+
+    // Gambar
+    if (bitmap) {
+      ctx.drawImage(bitmap, 0, 0, srcW, srcH, 0, 0, orientation >= 5 && orientation <= 8 ? dstH : dstW, orientation >= 5 && orientation <= 8 ? dstW : dstH);
+    } else {
+      ctx.drawImage(imgEl, 0, 0, srcW, srcH, 0, 0, orientation >= 5 && orientation <= 8 ? dstH : dstW, orientation >= 5 && orientation <= 8 ? dstW : dstH);
+    }
+
+    // Hasil JPEG base64
+    return c.toDataURL("image/jpeg", quality);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
 
 function Fasfield() {
   const [form, setForm] = useState(() => {
-    // Ambil data form dari localStorage kalau ada
     const saved = localStorage.getItem("patroliForm");
     return saved
       ? JSON.parse(saved)
@@ -100,17 +184,15 @@ function Fasfield() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [data, setData] = useState([]);
 
-  // Simpan otomatis ke localStorage setiap ada perubahan form
   useEffect(() => {
     localStorage.setItem("patroliForm", JSON.stringify(form));
   }, [form]);
 
-  // Ambil data awal dari Google Sheets
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`${endpoint}?sheet=patrolli`);
-        if (res.data.ok) setData(res.data.records);
+        if (res.data?.ok) setData(res.data.records || []);
       } catch (err) {
         console.error("Gagal ambil data:", err);
       }
@@ -126,70 +208,53 @@ function Fasfield() {
     });
   };
 
-  // Ambil foto
+  /* ----------------------- Ambil foto: robust di HP & laptop ----------------------- */
   const ambilFoto = async (i, capture = false) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/*";
-  if (capture) input.capture = "environment";
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,.heic,.heif"; // semua format
+    if (capture) input.capture = "environment";
 
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    input.onchange = async (e) => {
+      let file = e.target.files && e.target.files[0];
+      if (!file) return;
 
-    console.log("File dari HP:", file);
+      try {
+        // 1) Normalisasi file → JPEG bila HEIC/HEIF
+        file = await ensureJpeg(file);
 
-    let koordinat = "";
-    try {
-      const gpsFromExif = await getGPSFromImage(file);
-      koordinat = gpsFromExif || (await ambilGPS());
-    } catch (err) {
-      koordinat = "";
-      updateTemuan(i, "statusGPS", `Lokasi tidak tersedia (${err})`);
-    }
-
-    try {
-      const thumb = await resizeImage(file, 800, 0.7); // resize lebih kecil agar aman di HP
-      setForm((p) => {
-        const updated = [...p.temuanList];
-        updated[i] = {
-          ...updated[i],
-          foto: file,
-          fotoThumb: thumb,
-          koordinat,
-          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia"
-        };
-        return { ...p, temuanList: updated };
-      });
-    } catch (err) {
-      alert("Gagal memproses gambar: " + err);
-    }
-  };
-
-  input.click();
-};
-
-
-  const handleEditTemuan = (row) => {
-    setForm({
-      tanggal: row.tanggal,
-      wilayah: row.wilayah,
-      area: row.area,
-      temuanList: [
-        {
-          deskripsi: row.deskripsi,
-          tindakan: row.tindakan,
-          hasil: row.hasil,
-          foto: null,
-          fotoThumb: "",
-          koordinat: row.koordinat,
-          statusGPS: ""
+        // 2) Ambil GPS (EXIF jika JPEG, lalu browser sebagai fallback)
+        let koordinat = "";
+        try {
+          const gpsExif = await getGPSFromImage(file);
+          const gpsBrowser = gpsExif ? null : await ambilGPS();
+          koordinat = gpsExif || gpsBrowser || "";
+        } catch {
+          koordinat = "";
         }
-      ],
-      filename: "patroli",
-      _index: row._index
-    });
-    setEditMode(true);
+
+        // 3) Resize aman + perbaiki orientasi
+        const thumb = await resizeImage(file, 1280, 0.8);
+
+        // 4) Update state (preview selalu muncul meski GPS gagal)
+        setForm((p) => {
+          const updated = [...p.temuanList];
+          updated[i] = {
+            ...updated[i],
+            foto: file,
+            fotoThumb: thumb,
+            koordinat,
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia / ditolak"
+          };
+          return { ...p, temuanList: updated };
+        });
+      } catch (err) {
+        console.error("Gagal memproses gambar:", err);
+        alert("Gagal memproses gambar. Coba pilih ulang atau gunakan format JPG/PNG.");
+      }
+    };
+
+    input.click();
   };
 
   // Generate PDF
@@ -202,6 +267,7 @@ function Fasfield() {
       img.src = logoURL;
       await new Promise((resolve) => {
         img.onload = resolve;
+        img.onerror = resolve;
       });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
     } catch {}
@@ -215,27 +281,24 @@ function Fasfield() {
     doc.text(`Area: ${form.area}`, 14, 62);
 
     let y = 72;
-    for (const [i, t] of form.temuanList.entries()) {
+    for (const [idx, t] of form.temuanList.entries()) {
       if (y > 240) {
         doc.addPage();
         y = 20;
       }
       doc.setFontSize(13);
-      doc.text(`Temuan #${i + 1}`, 14, y);
+      doc.text(`Temuan #${idx + 1}`, 14, y);
       y += 6;
 
-      const textX = 14,
-        imageX = 140;
-      const textWidth = 90,
-        imageWidth = 50,
-        imageHeight = 45;
+      const textX = 14, imageX = 140;
+      const textWidth = 90, imageWidth = 50, imageHeight = 45;
       const lineHeight = 6;
 
       const lines = [
-        ...doc.splitTextToSize(`Deskripsi: ${t.deskripsi}`, textWidth),
-        ...doc.splitTextToSize(`Tindakan: ${t.tindakan}`, textWidth),
-        ...doc.splitTextToSize(`Hasil: ${t.hasil}`, textWidth),
-        ...doc.splitTextToSize(`Koordinat: ${t.koordinat}`, textWidth)
+        ...doc.splitTextToSize(`Deskripsi: ${t.deskripsi || "-"}`, textWidth),
+        ...doc.splitTextToSize(`Tindakan: ${t.tindakan || "-"}`, textWidth),
+        ...doc.splitTextToSize(`Hasil: ${t.hasil || "-"}`, textWidth),
+        ...doc.splitTextToSize(`Koordinat: ${t.koordinat || "-"}`, textWidth)
       ];
 
       doc.setFontSize(11);
@@ -266,6 +329,28 @@ function Fasfield() {
     XLSX.utils.book_append_sheet(wb, ws, "Data Patroli");
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "data_patrol.xlsx");
+  };
+
+  const handleEditTemuan = (row) => {
+    setForm({
+      tanggal: row.tanggal,
+      wilayah: row.wilayah,
+      area: row.area,
+      temuanList: [
+        {
+          deskripsi: row.deskripsi,
+          tindakan: row.tindakan,
+          hasil: row.hasil,
+          foto: null,
+          fotoThumb: "",
+          koordinat: row.koordinat,
+          statusGPS: ""
+        }
+      ],
+      filename: "patroli",
+      _index: row._index
+    });
+    setEditMode(true);
   };
 
   return (
@@ -322,6 +407,7 @@ function Fasfield() {
                       onChange={(e) => updateTemuan(i, "hasil", e.target.value)}
                     />
                   </Form.Group>
+
                   <div className="d-flex gap-2 mb-2">
                     <Button size="sm" onClick={() => ambilFoto(i, true)}>
                       Kamera
@@ -330,8 +416,14 @@ function Fasfield() {
                       Galeri
                     </Button>
                   </div>
+
                   {t.fotoThumb && (
-                    <img src={t.fotoThumb} alt="preview" className="mb-2 img-fluid rounded" />
+                    <img
+                      src={t.fotoThumb}
+                      alt="preview"
+                      className="mb-2 img-fluid rounded"
+                      style={{ maxHeight: 260, objectFit: "contain" }}
+                    />
                   )}
                   <div className="text-muted small mb-2">{t.statusGPS}</div>
                 </Card.Body>
@@ -372,6 +464,7 @@ function Fasfield() {
               a.href = URL.createObjectURL(blob);
               a.download = `${form.filename || "laporan"}.pdf`;
               a.click();
+              URL.revokeObjectURL(a.href);
             }}
           >
             Unduh PDF
@@ -399,7 +492,7 @@ function Fasfield() {
                     payload.index = form._index;
                   }
                   const res = await axios.post(endpoint, new URLSearchParams(payload));
-                  if (!res.data.ok) throw new Error(res.data.message);
+                  if (!res.data?.ok) throw new Error(res.data?.message || "Gagal menulis data");
                 }
                 alert(isEdit ? "Data berhasil diedit!" : "Data berhasil dikirim!");
                 setForm({
@@ -411,7 +504,7 @@ function Fasfield() {
                   _index: null
                 });
                 setEditMode(false);
-                localStorage.removeItem("patroliForm"); // reset cache
+                localStorage.removeItem("patroliForm");
               } catch (err) {
                 alert("Gagal kirim data: " + err.message);
               }
@@ -434,7 +527,7 @@ function Fasfield() {
             src={pdfPreviewUrl}
             title="PDF Preview"
             style={{ width: "100%", height: "500px" }}
-          ></iframe>
+          />
         </div>
       )}
 
