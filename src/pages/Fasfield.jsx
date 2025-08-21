@@ -1,16 +1,14 @@
+// src/pages/Fasfield.jsx
 import React, { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 import axios from "axios";
 import logoURL from "../assets/logo-jlm.jpeg";
-import {
-  Container, Row, Col, Form, Button, Card, Image, Modal, Table
-} from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Card, Table } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import EXIF from "exif-js";
 
 // Konstanta
-const LOCAL_KEY = "fasfield_isp_form_v2";
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
@@ -69,7 +67,7 @@ const resizeImage = (file, max = 600, q = 0.8) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const img = new Image();
+      const img = new window.Image(); // ✅ gunakan window.Image agar tidak bentrok
       img.onload = () => {
         try {
           const c = document.createElement("canvas");
@@ -81,7 +79,6 @@ const resizeImage = (file, max = 600, q = 0.8) =>
           const dataUrl = c.toDataURL("image/jpeg", q);
           resolve(dataUrl);
         } catch (err) {
-          console.error("Resize error:", err);
           reject("Gagal konversi gambar");
         }
       };
@@ -102,8 +99,6 @@ function Fasfield() {
     _index: null
   });
   const [editMode, setEditMode] = useState(false);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [previewIndex, setPreviewIndex] = useState(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [data, setData] = useState([]);
 
@@ -150,8 +145,17 @@ function Fasfield() {
 
       try {
         const thumb = await resizeImage(file);
-        setPreviewImage({ file, thumb, koordinat });
-        setPreviewIndex(i);
+        setForm((p) => {
+          const updated = [...p.temuanList];
+          updated[i] = {
+            ...updated[i],
+            foto: file,
+            fotoThumb: thumb,
+            koordinat,
+            statusGPS: "Lokasi berhasil diambil",
+          };
+          return { ...p, temuanList: updated };
+        });
       } catch (err) {
         alert("Gagal memproses gambar: " + err);
       }
@@ -187,7 +191,7 @@ function Fasfield() {
     doc.setFont("times", "");
 
     try {
-      const img = new Image();
+      const img = new window.Image(); // ✅ gunakan window.Image
       img.src = logoURL;
       await new Promise((resolve) => { img.onload = resolve; });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
@@ -227,15 +231,16 @@ function Fasfield() {
       });
 
       if (t.fotoThumb) {
-        try { doc.addImage(t.fotoThumb, "JPEG", imageX, y, imageWidth, imageHeight); }
-        catch { doc.text("Gagal tampilkan gambar", imageX, y); }
+        try {
+          doc.addImage(t.fotoThumb, "JPEG", imageX, y, imageWidth, imageHeight);
+        } catch {
+          doc.text("Gagal tampilkan gambar", imageX, y);
+        }
       }
       y += Math.max(lines.length * lineHeight, imageHeight) + 10;
     }
 
-    // perbaikan ⬇
-    const pdfBlob = new Blob([doc.output("arraybuffer")], { type: "application/pdf" });
-    return pdfBlob;
+    return doc.output("blob");
   };
 
   // Unduh Excel
@@ -289,7 +294,7 @@ function Fasfield() {
                     <Button size="sm" variant="secondary" onClick={() => ambilFoto(i, false)}>Galeri</Button>
                   </div>
                   {t.fotoThumb && (
-                    <Image src={t.fotoThumb} thumbnail className="mb-2" style={{ maxWidth: "100%" }} />
+                    <img src={t.fotoThumb} alt="preview" className="mb-2 img-fluid rounded" />
                   )}
                   <div className="text-muted small mb-2">{t.statusGPS}</div>
                 </Card.Body>
@@ -308,7 +313,8 @@ function Fasfield() {
         <Col>
           <Button className="w-100" onClick={async () => {
             const blob = await generatePDFBlob();
-            setPdfPreviewUrl(URL.createObjectURL(blob));
+            const url = URL.createObjectURL(blob);
+            setPdfPreviewUrl(url);
           }}>Lihat PDF</Button>
         </Col>
         <Col>
@@ -399,36 +405,6 @@ function Fasfield() {
           </Table>
         </Card.Body>
       </Card>
-
-      {/* Modal Preview Foto */}
-      <Modal show={!!previewImage} onHide={() => setPreviewImage(null)} centered size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Pratinjau Foto</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="text-center">
-          {previewImage && <img src={previewImage.thumb} alt="Preview" style={{ maxWidth: "100%" }} />}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setPreviewImage(null)}>Batal</Button>
-          <Button variant="primary" onClick={() => {
-            if (previewIndex !== null) {
-              setForm((p) => {
-                const updatedList = [...p.temuanList];
-                updatedList[previewIndex] = {
-                  ...updatedList[previewIndex],
-                  foto: previewImage.file,
-                  fotoThumb: previewImage.thumb,
-                  koordinat: previewImage.koordinat,
-                  statusGPS: "Lokasi berhasil diambil",
-                };
-                return { ...p, temuanList: updatedList };
-              });
-            }
-            setPreviewImage(null);
-            setPreviewIndex(null);
-          }}>Gunakan</Button>
-        </Modal.Footer>
-      </Modal>
     </Container>
   );
 }
