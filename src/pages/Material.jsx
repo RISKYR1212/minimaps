@@ -104,9 +104,10 @@ const Material = () => {
     saveAs(blob, "Laporan_Material.xlsx");
   };
 
-  const filteredData = data.filter(item =>
-    item.pic?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = data
+    .filter(item => item.pic?.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => new Date(b.date) - new Date(a.date)); // terbaru di atas
+
 
   return (
     <Container className="py-5">
@@ -243,7 +244,9 @@ const Material = () => {
                           _index: item._index
                         });
                         setEditMode(true);
+                        window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll ke atas
                       }}
+
                     >
                       Edit
                     </Button>

@@ -1,46 +1,62 @@
-// Project.jsx
 import React, { useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import { Button, Form, ListGroup, Container, Row, Col, InputGroup, } from "react-bootstrap";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMapEvents,
+} from "react-leaflet";
+import L from "leaflet";
+import {
+  Button,
+  Form,
+  ListGroup,
+  Container,
+  Row,
+  Col,
+  InputGroup,
+} from "react-bootstrap";
+
+// Fix icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+});
 
 const Project = () => {
   const [projects, setProjects] = useState([]);
   const [cables, setCables] = useState([]);
   const [selectedPins, setSelectedPins] = useState([]);
 
-  // Tambah marker dengan klik peta
+  // Add marker on map click
   const LocationMarker = () => {
     useMapEvents({
       click(e) {
-        const name = prompt("Masukkan nama project:");
-        if (name) {
-          const newProject = {
-            id: Date.now(),
-            name,
-            position: e.latlng,
-          };
-          setProjects((prev) => [...prev, newProject]);
-        }
+        const newProject = {
+          id: Date.now(),
+          name: `Pin-${projects.length + 1}`,
+          position: e.latlng,
+        };
+        setProjects((prev) => [...prev, newProject]);
       },
     });
     return null;
   };
 
-  // Fungsi rename project
-  const renameProject = (id) => {
-    const newName = prompt("Masukkan nama baru:");
-    if (newName) {
-      setProjects((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, name: newName } : p))
-      );
-    }
+  // Rename project from sidebar or popup
+  const renameProject = (id, newName) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, name: newName } : p))
+    );
   };
 
-  // Klik marker untuk pilih kabel
+  // Handle pin selection for creating cables
   const handleSelectPin = (project) => {
     if (selectedPins.length === 1 && selectedPins[0].id !== project.id) {
-      // buat kabel baru
       const newCable = {
         id: Date.now(),
         from: selectedPins[0],
@@ -48,41 +64,55 @@ const Project = () => {
         path: [selectedPins[0].position, project.position],
       };
       setCables((prev) => [...prev, newCable]);
-      setSelectedPins([]); 
+      setSelectedPins([]);
     } else {
       setSelectedPins([project]);
     }
   };
 
+  // Update position when marker dragged
+  const updateMarkerPosition = (id, newPos) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, position: newPos } : p))
+    );
+  };
+
   return (
     <Container fluid>
       <Row>
-        {/* Sidebar daftar project */}
-        <Col md={3} className="p-3 bg-light">
-          <h5>Daftar Project</h5>
-          {projects.length === 0 && <p>Belum ada project</p>}
-          <ListGroup>
+        {/* Sidebar */}
+        <Col md={3} className="p-3 bg-light" style={{ height: "100vh", overflowY: "auto" }}>
+          <h5 className="mb-3">📍 Daftar Project</h5>
+          {projects.length === 0 && <p>Belum ada pin. Klik peta untuk menambah.</p>}
+          <ListGroup className="mb-4">
             {projects.map((p) => (
-              <ListGroup.Item key={p.id}>
-                <InputGroup>
-                  <Form.Control value={p.name} readOnly />
+              <ListGroup.Item key={p.id} className="mb-2">
+                <InputGroup size="sm">
+                  <Form.Control
+                    value={p.name}
+                    onChange={(e) => renameProject(p.id, e.target.value)}
+                  />
                   <Button
-                    variant="warning"
-                    size="sm"
-                    onClick={() => renameProject(p.id)}
+                    variant={
+                      selectedPins.find((sp) => sp.id === p.id)
+                        ? "success"
+                        : "outline-primary"
+                    }
+                    onClick={() => handleSelectPin(p)}
                   >
-                    Rename
+                    {selectedPins.find((sp) => sp.id === p.id)
+                      ? "Selected"
+                      : "Select"}
                   </Button>
                 </InputGroup>
-                <small>
-                  Lat: {p.position.lat.toFixed(4)}, Lng:{" "}
-                  {p.position.lng.toFixed(4)}
+                <small className="text-muted">
+                  Lat: {p.position.lat.toFixed(4)}, Lng: {p.position.lng.toFixed(4)}
                 </small>
               </ListGroup.Item>
             ))}
           </ListGroup>
-          <hr />
-          <h6>Kabel</h6>
+
+          <h6>🔗 Kabel</h6>
           <ListGroup>
             {cables.map((c) => (
               <ListGroup.Item key={c.id}>
@@ -92,12 +122,12 @@ const Project = () => {
           </ListGroup>
         </Col>
 
-        {/* Peta */}
-        <Col md={9}>
+        {/* Map Area */}
+        <Col md={9} className="p-0">
           <MapContainer
             center={[-6.48167, 106.85417]}
-            zoom={13}
-            style={{ height: "100vh", width: "100%" }}
+            zoom={20}
+            style={{ height: "95vh", width: "200vh" }}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -106,32 +136,33 @@ const Project = () => {
 
             <LocationMarker />
 
-            {/* Render marker project */}
             {projects.map((p) => (
               <Marker
                 key={p.id}
                 position={p.position}
+                draggable
                 eventHandlers={{
                   click: () => handleSelectPin(p),
+                  dragend: (e) => {
+                    const newPos = e.target.getLatLng();
+                    updateMarkerPosition(p.id, newPos);
+                  },
                 }}
               >
                 <Popup>
-                  <b>{p.name}</b> <br />
-                  {p.position.lat.toFixed(4)}, {p.position.lng.toFixed(4)} <br />
-                  <Button
-                    size="sm"
-                    variant="warning"
-                    onClick={() => renameProject(p.id)}
-                  >
-                    Rename
-                  </Button>
+                  <b>{p.name}</b>
+                  <br />
+                  <Form.Control
+                    className="mt-2"
+                    value={p.name}
+                    onChange={(e) => renameProject(p.id, e.target.value)}
+                  />
                 </Popup>
               </Marker>
             ))}
 
-            {/* Render kabel */}
             {cables.map((c) => (
-              <Polyline key={c.id} positions={c.path} color="orange" />
+              <Polyline key={c.id} positions={c.path} color="orange" weight={4} />
             ))}
           </MapContainer>
         </Col>
