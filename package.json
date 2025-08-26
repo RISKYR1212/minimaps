@@ -35,6 +35,7 @@
     "leaflet-omnivore": "^0.3.4",
     "leaflet-routing-machine": "^3.2.12",
     "leaflet.awesome-markers": "^2.0.5",
+    "leaflet.markercluster": "^1.5.3",
     "react": "^18.2.0",
     "react-bootstrap": "^2.10.9",
     "react-bootstrap-icons": "^1.11.5",
@@ -47,6 +48,7 @@
     "react-toastify": "^11.0.5",
     "reactflow": "^11.11.4",
     "tesseract.js": "^6.0.1",
+    "tokml": "^0.4.0",
     "uuid": "^11.1.0",
     "vite-plugin-pwa": "^1.0.1",
     "xlsx": "^0.18.5"
