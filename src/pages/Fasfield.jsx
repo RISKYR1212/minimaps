@@ -205,14 +205,13 @@ export function Fasfield() {
 
   /* ================== PILIH/AMBIL FOTO (HP/Laptop) ================== */
   const pickImage = async (idx, useCamera = false) => {
-    // Buat input file by click (user gesture → aman di iOS/Android)
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*,.heic,.heif";
-    if (useCamera) input.setAttribute("capture", "environment"); // kamera belakang di HP yang support
+    if (useCamera) input.setAttribute("capture", "environment");
 
     input.onchange = async (e) => {
-      let file = e.target.files && e.target.files[0];
+      let file = e.target.files?.[0];
       if (!file) return;
 
       try {
@@ -228,29 +227,30 @@ export function Fasfield() {
           koordinat = "";
         }
 
-        // 3) Resize + perbaikan orientasi (untuk preview & PDF)
-        const thumb = await resizeWithOrientation(file, 1280, 0.82);
+        // 3) Resize + orientasi
+        const thumb = await resizeWithOrientation(file, 800, 0.7);
 
         // 4) Update state
         setForm((p) => {
           const list = [...p.temuanList];
           list[idx] = {
             ...list[idx],
-            fotoFile: file,
-            fotoThumb: thumb,
+            fotoFile: file,      // file asli
+            fotoThumb: thumb,    // base64
             koordinat,
-            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia / ditolak",
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
           };
           return { ...p, temuanList: list };
         });
       } catch (err) {
         console.error("Gagal memproses gambar:", err);
-        alert("Gagal memproses gambar. Coba pilih ulang atau gunakan format JPG/PNG/HEIC.");
+        alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
       }
     };
 
     input.click();
   };
+
 
   /* ========================= PDF GENERATOR ========================= */
   const generatePDFBlob = async () => {

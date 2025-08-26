@@ -18,7 +18,6 @@ const Navbar = () => {
   }, []);
 
   const navItems = [
-    // { path: "/", label: "Home" },
     { path: "/maps", label: "Maps" },
     { path: "/fasfield", label: "Fastfield" },
     { path: "/core", label: "Alokasi Core" },
@@ -40,7 +39,7 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Navbar Atas */}
+      {/* Navbar */}
       <nav
         className={`navbar navbar-expand-lg fixed-top ${
           darkMode ? "navbar-dark bg-dark" : "navbar-light bg-white shadow-sm"
@@ -51,9 +50,9 @@ const Navbar = () => {
           paddingBottom: scrolled ? "6px" : "12px",
         }}
       >
-        <div className="container-fluid">
-          {/* Logo & Brand */}
-          <Link to="/" className="navbar-brand d-flex align-items-center">
+        <div className="container-fluid d-flex justify-content-end align-items-center">
+          {/* Brand */}
+          <Link to="/" className="navbar-brand d-flex align-items-center me-4">
             <img
               src="https://jlm.net.id/new-logo-jlm.png"
               alt="Logo JLM"
@@ -63,12 +62,12 @@ const Navbar = () => {
                 transition: "all 0.3s ease",
               }}
             />
-            <span style={{ fontWeight: "bold" }}>Rizky Rispaldi</span>
+            <span className="fw-bold">Rizky Rispaldi</span>
           </Link>
 
-          {/* Menu Desktop */}
-          <div className="d-none d-lg-flex ms-auto">
-            <ul className="navbar-nav me-3">
+          {/* Desktop Menu */}
+          <div className="d-none d-lg-flex align-items-center">
+            <ul className="navbar-nav me-4">
               {navItems.map(({ path, label }) => (
                 <li key={path} className="nav-item">
                   <Link
@@ -80,7 +79,7 @@ const Navbar = () => {
                           : "text-primary border-bottom border-primary"
                         : ""
                     }`}
-                    style={{ padding: "8px 12px" }}
+                    style={{ padding: "8px 14px" }}
                   >
                     {label}
                   </Link>
@@ -89,17 +88,17 @@ const Navbar = () => {
             </ul>
           </div>
 
-          {/* Right Side Icon */}
+          {/* Icons */}
           <div className="d-flex align-items-center">
             <button
-              className="btn btn-sm btn-outline-secondary me-2"
+              className="btn btn-sm btn-outline-secondary me-3"
               onClick={toggleTheme}
             >
               {darkMode ? <FaSun size={18} /> : <FaMoon size={18} />}
             </button>
-            <FaUserCircle size={26} className="text-secondary me-3" />
+            <FaUserCircle size={28} className="text-secondary me-3" />
 
-            {/* Sidebar Toggle (Mobile) */}
+            {/* Toggle for Mobile */}
             <button
               className="btn btn-outline-primary d-lg-none"
               type="button"
@@ -113,15 +112,15 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Sidebar Mobile */}
+      {/* Offcanvas for Mobile */}
       <div
-        className={`offcanvas offcanvas-start ${darkMode ? "text-bg-dark" : ""}`}
+        className={`offcanvas offcanvas-end ${darkMode ? "text-bg-dark" : ""}`}
         tabIndex="-1"
         id="sidebarMenu"
         aria-labelledby="sidebarMenuLabel"
       >
         <div className="offcanvas-header">
-          <h5 className="offcanvas-title" id="sidebarMenuLabel">
+          <h5 className="offcanvas-title fw-bold" id="sidebarMenuLabel">
             Menu
           </h5>
           <button
@@ -145,7 +144,7 @@ const Navbar = () => {
                       : ""
                   }`}
                   onClick={handleLinkClick}
-                  style={{ padding: "10px 14px" }}
+                  style={{ padding: "12px 16px" }}
                 >
                   {label}
                 </Link>

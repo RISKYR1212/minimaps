@@ -16,7 +16,7 @@
     "@vite-pwa/assets-generator": "^1.0.0",
     "@vitejs/plugin-react": "^4.6.0",
     "@xmldom/xmldom": "^0.9.8",
-    "axios": "^1.10.0",
+    "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
     "bootstrap": "^5.3.5",
     "dayjs": "^1.11.13",
