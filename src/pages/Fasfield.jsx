@@ -192,62 +192,70 @@ export function Fasfield() {
 
   // Pilih foto
   const pickImage = async (idx, useCamera = false) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/*,.heic,.heif";
-  if (useCamera) input.setAttribute("capture", "environment");
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,.heic,.heif";
+    if (useCamera) input.setAttribute("capture", "environment");
 
-  input.onchange = async (e) => {
-    let file = e.target.files?.[0];
-    if (!file) return;
+    input.onchange = async (e) => {
+      let file = e.target.files?.[0];
+      if (!file) return;
 
-    try {
-      // Konversi HEIC → JPEG (jika perlu)
       try {
-        file = await ensureJpeg(file);
-      } catch (err) {
-        console.warn("Konversi HEIC gagal:", err);
-      }
+        console.log("Picked file:", file);
 
-      // Ambil koordinat dari EXIF atau GPS browser
-      let koordinat = "";
-      try {
-        const exifGps = await getGPSFromImage(file);
-        koordinat = exifGps || (await ambilGPSBrowser()) || "";
-      } catch (err) {
-        console.warn("Gagal ambil GPS:", err);
-        koordinat = "";
-      }
+        // 1️⃣ Pastikan format JPEG
+        if (file.type === "image/heic" || file.type === "image/heif") {
+          try {
+            const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+            file = new File([converted], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+            console.log("HEIC converted to JPEG:", file);
+          } catch (err) {
+            console.warn("Konversi HEIC gagal:", err);
+          }
+        }
 
-      // Buat thumbnail dengan kompresi (fallback ke URL.createObjectURL jika gagal)
-      let thumb;
-      try {
-        thumb = await resizeWithOrientation(file, 600, 0.6);
-      } catch (err) {
-        console.warn("Resize gagal, pakai URL object:", err);
-        thumb = URL.createObjectURL(file);
-      }
+        // 2️⃣ Ambil GPS dari EXIF atau browser
+        let koordinat = "";
+        try {
+          koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser()) || "";
+        } catch (err) {
+          console.warn("Gagal ambil GPS:", err);
+        }
 
-      // Update state form
-      setForm((p) => {
-        const list = [...p.temuanList];
-        list[idx] = {
-          ...list[idx],
-          fotoFile: file,
-          fotoThumb: thumb,
-          koordinat,
-          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
-        };
-        return { ...p, temuanList: list };
-      });
-    } catch (err) {
-      console.error("Gagal memproses gambar:", err);
-      alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
-    }
+        // 3️⃣ Buat thumbnail yang pasti tampil
+        let thumb = "";
+        try {
+          thumb = await resizeWithOrientation(file, 600, 0.6);
+          if (!thumb) throw new Error("Thumbnail kosong");
+        } catch {
+          console.warn("Resize gagal, pakai URL object:", file);
+          thumb = URL.createObjectURL(file); // fallback
+        }
+
+        console.log("Thumbnail ready:", thumb);
+
+        // 4️⃣ Update state form
+        setForm((p) => {
+          const list = [...p.temuanList];
+          list[idx] = {
+            ...list[idx],
+            fotoFile: file,
+            fotoThumb: thumb,
+            koordinat,
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
+          };
+          return { ...p, temuanList: list };
+        });
+      } catch (err) {
+        console.error("Gagal memproses gambar:", err);
+        alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
+      }
+    };
+
+    input.click();
   };
 
-  input.click();
-};
 
   // ✅ Fungsi hapus foto
   const hapusFoto = (idx) => {
@@ -277,7 +285,7 @@ export function Fasfield() {
         img.onerror = resolve;
       });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch {}
+    } catch { }
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
