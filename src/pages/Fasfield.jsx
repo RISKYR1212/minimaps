@@ -192,57 +192,57 @@ export function Fasfield() {
 
   // Pilih foto
   const pickImage = async (idx, useCamera = false) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,.heic,.heif";
-    if (useCamera) input.setAttribute("capture", "environment");
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*,.heic,.heif";
+  if (useCamera) input.setAttribute("capture", "environment");
 
-    input.onchange = async (e) => {
-      let file = e.target.files?.[0];
-      if (!file) return;
+  input.onchange = async (e) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
 
+    try {
+      // Pastikan file dalam format JPEG
+      file = await ensureJpeg(file);
+
+      // Ambil koordinat (EXIF atau GPS browser)
+      let koordinat = "";
       try {
-        // Pastikan file dalam format JPEG
-        file = await ensureJpeg(file);
-
-        // Ambil koordinat (EXIF atau GPS browser)
-        let koordinat = "";
-        try {
-          const exifGps = await getGPSFromImage(file);
-          koordinat = exifGps || (await ambilGPSBrowser()) || "";
-        } catch {
-          koordinat = "";
-        }
-
-        // Resize gambar dengan orientasi benar
-        let thumb;
-        try {
-          thumb = await resizeWithOrientation(file, 800, 0.7);
-        } catch {
-          // Fallback jika gagal resize → pakai URL.createObjectURL
-          thumb = URL.createObjectURL(file);
-        }
-
-        // Update state
-        setForm((p) => {
-          const list = [...p.temuanList];
-          list[idx] = {
-            ...list[idx],
-            fotoFile: file,
-            fotoThumb: thumb,
-            koordinat,
-            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
-          };
-          return { ...p, temuanList: list };
-        });
-      } catch (err) {
-        console.error("Gagal memproses gambar:", err);
-        alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
+        const exifGps = await getGPSFromImage(file);
+        koordinat = exifGps || (await ambilGPSBrowser()) || "";
+      } catch {
+        koordinat = "";
       }
-    };
 
-    input.click();
+      // Resize gambar dengan orientasi benar
+      let thumb;
+      try {
+        thumb = await resizeWithOrientation(file, 800, 0.7);
+      } catch {
+        // Fallback jika gagal resize → pakai URL.createObjectURL
+        thumb = URL.createObjectURL(file);
+      }
+
+      // Update state
+      setForm((p) => {
+        const list = [...p.temuanList];
+        list[idx] = {
+          ...list[idx],
+          fotoFile: file,
+          fotoThumb: thumb,
+          koordinat,
+          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
+        };
+        return { ...p, temuanList: list };
+      });
+    } catch (err) {
+      console.error("Gagal memproses gambar:", err);
+      alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
+    }
   };
+
+  input.click();
+};
 
   // ✅ Fungsi hapus foto
   const hapusFoto = (idx) => {
@@ -486,7 +486,6 @@ export function Fasfield() {
                       </div>
                     </div>
                   )}
-
                   <div className="text-muted small mb-1">{t.statusGPS}</div>
 
                 </Card.Body>
