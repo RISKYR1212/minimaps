@@ -192,57 +192,44 @@ export function Fasfield() {
 
   // Pilih foto
   const pickImage = async (idx, useCamera = false) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/*,.heic,.heif";
-  if (useCamera) input.setAttribute("capture", "environment");
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,.heic,.heif";
+    if (useCamera) input.setAttribute("capture", "environment");
 
-  input.onchange = async (e) => {
-    let file = e.target.files?.[0];
-    if (!file) return;
+    input.onchange = async (e) => {
+      let file = e.target.files?.[0];
+      if (!file) return;
 
-    try {
-      // Pastikan file dalam format JPEG
-      file = await ensureJpeg(file);
-
-      // Ambil koordinat (EXIF atau GPS browser)
-      let koordinat = "";
       try {
-        const exifGps = await getGPSFromImage(file);
-        koordinat = exifGps || (await ambilGPSBrowser()) || "";
-      } catch {
-        koordinat = "";
+        file = await ensureJpeg(file);
+        let koordinat = "";
+        try {
+          const exifGps = await getGPSFromImage(file);
+          koordinat = exifGps || (await ambilGPSBrowser()) || "";
+        } catch {
+          koordinat = "";
+        }
+        const thumb = await resizeWithOrientation(file, 800, 0.7);
+        setForm((p) => {
+          const list = [...p.temuanList];
+          list[idx] = {
+            ...list[idx],
+            fotoFile: file,
+            fotoThumb: thumb,
+            koordinat,
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
+          };
+          return { ...p, temuanList: list };
+        });
+      } catch (err) {
+        console.error("Gagal memproses gambar:", err);
+        alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
       }
+    };
 
-      // Resize gambar dengan orientasi benar
-      let thumb;
-      try {
-        thumb = await resizeWithOrientation(file, 800, 0.7);
-      } catch {
-        // Fallback jika gagal resize → pakai URL.createObjectURL
-        thumb = URL.createObjectURL(file);
-      }
-
-      // Update state
-      setForm((p) => {
-        const list = [...p.temuanList];
-        list[idx] = {
-          ...list[idx],
-          fotoFile: file,
-          fotoThumb: thumb,
-          koordinat,
-          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
-        };
-        return { ...p, temuanList: list };
-      });
-    } catch (err) {
-      console.error("Gagal memproses gambar:", err);
-      alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
-    }
+    input.click();
   };
-
-  input.click();
-};
 
   // ✅ Fungsi hapus foto
   const hapusFoto = (idx) => {
@@ -272,7 +259,7 @@ export function Fasfield() {
         img.onerror = resolve;
       });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch { }
+    } catch {}
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
@@ -467,27 +454,15 @@ export function Fasfield() {
                     </Button>
                   </div>
 
-                  {t.fotoThumb && (
-                    <div className="mb-2">
-                      <img
-                        src={t.fotoThumb}
-                        alt="preview"
-                        className="mb-2 img-fluid rounded"
-                        style={{ maxHeight: 260, objectFit: "contain" }}
-                      />
-                      <div>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => hapusFoto(i)}
-                        >
-                          Hapus Foto
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  {t.fotoThumb ? (
+                    <img
+                      src={t.fotoThumb}
+                      alt="preview"
+                      className="mb-2 img-fluid rounded"
+                      style={{ maxHeight: 260, objectFit: "contain" }}
+                    />
+                  ) : null}
                   <div className="text-muted small mb-1">{t.statusGPS}</div>
-
                 </Card.Body>
               </Card>
             ))}
