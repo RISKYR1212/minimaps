@@ -244,6 +244,7 @@ export function Fasfield() {
     input.click();
   };
 
+
   // ✅ Fungsi hapus foto
   const hapusFoto = (idx) => {
     setForm((prev) => {
@@ -486,6 +487,7 @@ export function Fasfield() {
                       </div>
                     </div>
                   )}
+
 
                   <div className="text-muted small mb-1">{t.statusGPS}</div>
 
