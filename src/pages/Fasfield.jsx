@@ -92,52 +92,49 @@ async function ensureJpeg(file) {
 }
 
 /* === UTIL: Resize + perbaikan orientasi untuk preview/PDF === */
-async function resizeWithOrientation(file, max = 1280, quality = 0.82) {
-  const blob = file instanceof Blob ? file : new Blob([file], { type: file.type || "image/jpeg" });
-  const url = URL.createObjectURL(blob);
-
-  try {
-    let imgEl = null;
-
-    imgEl = await new Promise((resolve, reject) => {
+async function resizeWithOrientation(file, maxSize = 1280, quality = 0.8) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const url = URL.createObjectURL(file);
       const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = (e) => reject(new Error("Gagal memuat gambar"));
+      img.onload = async () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const orientation = await getExifOrientation(file);
+
+        // Hitung ukuran baru
+        let w = img.width;
+        let h = img.height;
+        const scale = Math.min(maxSize / w, maxSize / h, 1);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+
+        const swap = orientation >= 5 && orientation <= 8;
+        canvas.width = swap ? h : w;
+        canvas.height = swap ? w : h;
+
+        // Perbaiki orientasi
+        switch (orientation) {
+          case 2: ctx.transform(-1, 0, 0, 1, canvas.width, 0); break;
+          case 3: ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height); break;
+          case 4: ctx.transform(1, 0, 0, -1, 0, canvas.height); break;
+          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+          case 6: ctx.transform(0, 1, -1, 0, canvas.height, 0); break;
+          case 7: ctx.transform(0, -1, -1, 0, canvas.height, canvas.width); break;
+          case 8: ctx.transform(0, -1, 1, 0, 0, canvas.width); break;
+        }
+
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, swap ? h : w, swap ? w : h);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+      img.onerror = () => reject("Gagal load gambar");
       img.src = url;
-    });
-
-    const srcW = imgEl.width;
-    const srcH = imgEl.height;
-    const scale = Math.min(1, max / Math.max(srcW, srcH));
-    const dstW = Math.max(1, Math.round(srcW * scale));
-    const dstH = Math.max(1, Math.round(srcH * scale));
-
-    const orientation = await getExifOrientation(file);
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    const needsSwap = orientation >= 5 && orientation <= 8;
-    canvas.width = needsSwap ? dstH : dstW;
-    canvas.height = needsSwap ? dstW : dstH;
-
-    switch (orientation) {
-      case 2: ctx.transform(-1, 0, 0, 1, canvas.width, 0); break;
-      case 3: ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height); break;
-      case 4: ctx.transform(1, 0, 0, -1, 0, canvas.height); break;
-      case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
-      case 6: ctx.transform(0, 1, -1, 0, canvas.height, 0); break;
-      case 7: ctx.transform(0, -1, -1, 0, canvas.height, canvas.width); break;
-      case 8: ctx.transform(0, -1, 1, 0, 0, canvas.width); break;
-      default: break;
+    } catch (err) {
+      reject(err);
     }
-
-    ctx.drawImage(imgEl, 0, 0, srcW, srcH, 0, 0, needsSwap ? dstH : dstW, needsSwap ? dstW : dstH);
-
-    return canvas.toDataURL("image/jpeg", quality);
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  });
 }
 
 /* ========================== KOMPONEN ======================== */
@@ -202,40 +199,17 @@ export function Fasfield() {
       if (!file) return;
 
       try {
-        console.log("Picked file:", file);
+        // ✅ Konversi HEIC → JPEG
+        file = await ensureJpeg(file);
 
-        // 1️⃣ Pastikan format JPEG
-        if (file.type === "image/heic" || file.type === "image/heif") {
-          try {
-            const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
-            file = new File([converted], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
-            console.log("HEIC converted to JPEG:", file);
-          } catch (err) {
-            console.warn("Konversi HEIC gagal:", err);
-          }
-        }
+        // ✅ Ambil GPS dari EXIF atau browser
+        const koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser()) || "";
 
-        // 2️⃣ Ambil GPS dari EXIF atau browser
-        let koordinat = "";
-        try {
-          koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser()) || "";
-        } catch (err) {
-          console.warn("Gagal ambil GPS:", err);
-        }
+        // ✅ Resize & perbaiki orientasi untuk preview & PDF
+        let thumb = await resizeWithOrientation(file, 800, 0.7);
+        if (!thumb) thumb = URL.createObjectURL(file); // fallback
 
-        // 3️⃣ Buat thumbnail yang pasti tampil
-        let thumb = "";
-        try {
-          thumb = await resizeWithOrientation(file, 600, 0.6);
-          if (!thumb) throw new Error("Thumbnail kosong");
-        } catch {
-          console.warn("Resize gagal, pakai URL object:", file);
-          thumb = URL.createObjectURL(file); // fallback
-        }
-
-        console.log("Thumbnail ready:", thumb);
-
-        // 4️⃣ Update state form
+        // ✅ Update state
         setForm((p) => {
           const list = [...p.temuanList];
           list[idx] = {
@@ -248,8 +222,8 @@ export function Fasfield() {
           return { ...p, temuanList: list };
         });
       } catch (err) {
-        console.error("Gagal memproses gambar:", err);
-        alert("Gagal memproses gambar. Gunakan format JPG/PNG/HEIC.");
+        console.error("Gagal memproses foto:", err);
+        alert("Gagal memproses foto. Gunakan JPG/PNG/HEIC.");
       }
     };
 
