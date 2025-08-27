@@ -202,7 +202,10 @@ export function Fasfield() {
       if (!file) return;
 
       try {
+        // Pastikan file dalam format JPEG
         file = await ensureJpeg(file);
+
+        // Ambil koordinat (EXIF atau GPS browser)
         let koordinat = "";
         try {
           const exifGps = await getGPSFromImage(file);
@@ -210,7 +213,17 @@ export function Fasfield() {
         } catch {
           koordinat = "";
         }
-        const thumb = await resizeWithOrientation(file, 800, 0.7);
+
+        // Resize gambar dengan orientasi benar
+        let thumb;
+        try {
+          thumb = await resizeWithOrientation(file, 800, 0.7);
+        } catch {
+          // Fallback jika gagal resize → pakai URL.createObjectURL
+          thumb = URL.createObjectURL(file);
+        }
+
+        // Update state
         setForm((p) => {
           const list = [...p.temuanList];
           list[idx] = {
@@ -473,6 +486,7 @@ export function Fasfield() {
                       </div>
                     </div>
                   )}
+
                   <div className="text-muted small mb-1">{t.statusGPS}</div>
 
                 </Card.Body>
