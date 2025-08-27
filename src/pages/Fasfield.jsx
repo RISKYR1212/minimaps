@@ -1,5 +1,4 @@
-// src/pages/Fasfield.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Container, Row, Col, Form, Button, Card, Table, Spinner } from "react-bootstrap";
 import { jsPDF } from "jspdf";
@@ -18,8 +17,8 @@ const blankTemuan = () => ({
   deskripsi: "",
   tindakan: "",
   hasil: "",
-  fotoFile: null,       // File asli (tidak dikirim ke Sheets)
-  fotoThumb: "",        // base64 JPEG hasil resize+orientasi (untuk preview & PDF)
+  fotoFile: null,
+  fotoThumb: "",
   koordinat: "",
   statusGPS: "",
 });
@@ -96,27 +95,19 @@ async function ensureJpeg(file) {
 async function resizeWithOrientation(file, max = 1280, quality = 0.82) {
   const blob = file instanceof Blob ? file : new Blob([file], { type: file.type || "image/jpeg" });
   const url = URL.createObjectURL(blob);
-  try {
-    let bitmap = null;
-    if ("createImageBitmap" in window) {
-      try {
-        bitmap = await createImageBitmap(blob);
-      } catch {
-        bitmap = null;
-      }
-    }
-    let imgEl = null;
-    if (!bitmap) {
-      imgEl = await new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Gagal memuat gambar"));
-        img.src = url;
-      });
-    }
 
-    const srcW = bitmap ? bitmap.width : imgEl.width;
-    const srcH = bitmap ? bitmap.height : imgEl.height;
+  try {
+    let imgEl = null;
+
+    imgEl = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (e) => reject(new Error("Gagal memuat gambar"));
+      img.src = url;
+    });
+
+    const srcW = imgEl.width;
+    const srcH = imgEl.height;
     const scale = Math.min(1, max / Math.max(srcW, srcH));
     const dstW = Math.max(1, Math.round(srcW * scale));
     const dstH = Math.max(1, Math.round(srcH * scale));
@@ -141,15 +132,11 @@ async function resizeWithOrientation(file, max = 1280, quality = 0.82) {
       default: break;
     }
 
-    if (bitmap) {
-      ctx.drawImage(bitmap, 0, 0, srcW, srcH, 0, 0, needsSwap ? dstH : dstW, needsSwap ? dstW : dstH);
-    } else {
-      ctx.drawImage(imgEl, 0, 0, srcW, srcH, 0, 0, needsSwap ? dstH : dstW, needsSwap ? dstW : dstH);
-    }
+    ctx.drawImage(imgEl, 0, 0, srcW, srcH, 0, 0, needsSwap ? dstH : dstW, needsSwap ? dstW : dstH);
 
     return canvas.toDataURL("image/jpeg", quality);
   } finally {
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
 
@@ -176,7 +163,7 @@ export function Fasfield() {
     localStorage.setItem("patroliForm", JSON.stringify(form));
   }, [form]);
 
-  // Ambil data dari GAS (array guard)
+  // Ambil data dari GAS
   useEffect(() => {
     (async () => {
       if (!endpoint) return;
@@ -203,7 +190,7 @@ export function Fasfield() {
     });
   };
 
-  /* ================== PILIH/AMBIL FOTO (HP/Laptop) ================== */
+  // Pilih foto
   const pickImage = async (idx, useCamera = false) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -215,10 +202,7 @@ export function Fasfield() {
       if (!file) return;
 
       try {
-        // 1) HEIC → JPEG bila perlu
         file = await ensureJpeg(file);
-
-        // 2) Ambil GPS
         let koordinat = "";
         try {
           const exifGps = await getGPSFromImage(file);
@@ -226,17 +210,13 @@ export function Fasfield() {
         } catch {
           koordinat = "";
         }
-
-        // 3) Resize + orientasi
         const thumb = await resizeWithOrientation(file, 800, 0.7);
-
-        // 4) Update state
         setForm((p) => {
           const list = [...p.temuanList];
           list[idx] = {
             ...list[idx],
-            fotoFile: file,      // file asli
-            fotoThumb: thumb,    // base64
+            fotoFile: file,
+            fotoThumb: thumb,
             koordinat,
             statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
           };
@@ -251,14 +231,26 @@ export function Fasfield() {
     input.click();
   };
 
+  // ✅ Fungsi hapus foto
+  const hapusFoto = (idx) => {
+    setForm((prev) => {
+      const list = [...prev.temuanList];
+      list[idx] = {
+        ...list[idx],
+        fotoFile: null,
+        fotoThumb: "",
+        koordinat: "",
+        statusGPS: "",
+      };
+      return { ...prev, temuanList: list };
+    });
+  };
 
   /* ========================= PDF GENERATOR ========================= */
   const generatePDFBlob = async () => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    // Gunakan font yang pasti ada di jsPDF agar tidak warning
     doc.setFont("helvetica", "normal");
 
-    // Logo (optional)
     try {
       const img = new Image();
       img.src = logoURL;
@@ -321,7 +313,6 @@ export function Fasfield() {
     return doc.output("blob");
   };
 
-  /* ====================== UNDUH EXCEL (DATA) ====================== */
   const downloadExcel = () => {
     if (!data.length) return alert("Tidak ada data untuk diunduh");
     const ws = XLSX.utils.json_to_sheet(data);
@@ -331,7 +322,6 @@ export function Fasfield() {
     saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "data_patrol.xlsx");
   };
 
-  /* ====================== EDIT DARI TABEL ====================== */
   const handleEditTemuan = (row) => {
     setForm({
       tanggal: row.tanggal || "",
@@ -355,7 +345,6 @@ export function Fasfield() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  /* ====================== KIRIM KE GOOGLE SHEETS ====================== */
   const submitToSheets = async () => {
     if (!endpoint) return alert("Endpoint Google Apps Script belum diatur.");
     try {
@@ -376,16 +365,13 @@ export function Fasfield() {
           payload.edit = "edit";
           payload.index = form._index;
         }
-        // Kirim sebagai x-www-form-urlencoded
-        const res = await axios.post(endpoint, new URLSearchParams(payload), {
+        await axios.post(endpoint, new URLSearchParams(payload), {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           timeout: 20000,
         });
-        if (!res.data?.ok) throw new Error(res.data?.message || "Gagal menulis data");
       }
 
       alert(isEdit ? "Data berhasil diperbarui!" : "Data berhasil dikirim!");
-      // Reset form setelah kirim
       setForm({ tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null });
       setEditMode(false);
       localStorage.removeItem("patroliForm");
@@ -468,15 +454,27 @@ export function Fasfield() {
                     </Button>
                   </div>
 
-                  {t.fotoThumb ? (
-                    <img
-                      src={t.fotoThumb}
-                      alt="preview"
-                      className="mb-2 img-fluid rounded"
-                      style={{ maxHeight: 260, objectFit: "contain" }}
-                    />
-                  ) : null}
+                  {t.fotoThumb && (
+                    <div className="mb-2">
+                      <img
+                        src={t.fotoThumb}
+                        alt="preview"
+                        className="mb-2 img-fluid rounded"
+                        style={{ maxHeight: 260, objectFit: "contain" }}
+                      />
+                      <div>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => hapusFoto(i)}
+                        >
+                          Hapus Foto
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   <div className="text-muted small mb-1">{t.statusGPS}</div>
+
                 </Card.Body>
               </Card>
             ))}
@@ -514,7 +512,7 @@ export function Fasfield() {
               a.href = URL.createObjectURL(blob);
               a.download = `${form.filename || "laporan"}.pdf`;
               a.click();
-              URL.revokeObjectURL(a.href);
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
             }}
           >
             Unduh PDF

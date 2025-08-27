@@ -99,8 +99,7 @@ export function Osp() {
     });
   };
 
-  // When user selects a photo, get GPS from browser and put into latlong field.
-  // Note: we DO NOT read EXIF here; we get current position as requested.
+
   const handlePhotoChange = (e, field) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -185,7 +184,7 @@ export function Osp() {
 
   const saveEdit = async () => {
     try {
-      const indexSheet = editIndex + 2; 
+      const indexSheet = editIndex + 2;
       await send(editForm, true, indexSheet);
       setEditIndex(null);
       setEditForm({});
@@ -200,13 +199,13 @@ export function Osp() {
     setEditForm({});
   };
 
-  
+
   const downloadCSV = () => {
     if (!rows.length) {
       alert("Tidak ada data untuk diunduh");
       return;
     }
-    
+
     const headers = Array.from(rows.reduce((s, r) => {
       Object.keys(r || {}).forEach(k => s.add(k));
       return s;
