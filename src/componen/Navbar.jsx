@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FaMoon, FaSun, FaUserCircle, FaBars } from "react-icons/fa";
 import { Offcanvas } from "bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
 const Navbar = () => {
   const location = useLocation();
@@ -31,9 +33,7 @@ const Navbar = () => {
     const sidebar = document.getElementById("sidebarMenu");
     if (sidebar) {
       const bsOffcanvas = Offcanvas.getInstance(sidebar);
-      if (bsOffcanvas) {
-        bsOffcanvas.hide();
-      }
+      if (bsOffcanvas) bsOffcanvas.hide();
     }
   };
 
