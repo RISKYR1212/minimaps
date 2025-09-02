@@ -363,28 +363,111 @@ export function Osp() {
             {rows.length === 0 ? (
               <tr><td colSpan="15" className="text-center">Belum ada data</td></tr>
             ) : rows.map((r, i) => (
-              <tr key={i}>
-                <td>{i + 1}</td>
-                <td>{fmtDate(r.tanggal)}</td>
-                <td>{fmtTime(r.start_user)}</td>
-                <td>{fmtTime(r.end_user)}</td>
-                <td>{r.hasil_durasi_user}</td>
-                <td>{fmtTime(r.start_ticket)}</td>
-                <td>{fmtTime(r.end_ticket)}</td>
-                <td>{r.hasil_durasi_ticket}</td>
-                <td style={{ maxWidth: 180, whiteSpace: "normal" }}>{r.problem}</td>
-                <td style={{ maxWidth: 180, whiteSpace: "normal" }}>{r.action}</td>
-                <td>{r.pic}</td>
-                <td>{r.nomor_ticket}</td>
-                <td>{r.latlong || "-"}</td>
-                <td>{r.latlong2 || "-"}</td>
-                <td className="text-center">
-                  <Button size="sm" variant="outline-primary" className="me-1" onClick={() => startEdit(i)}><PencilSquare /></Button>
-                  <Button size="sm" variant="outline-danger" onClick={() => delLocal(i)}><X /></Button>
-                </td>
-              </tr>
+              editIndex === i ? (
+                <tr key={i}>
+                  <td>{i + 1}</td>
+                  <td>
+                    <Form.Control
+                      type="date"
+                      name="tanggal"
+                      value={editForm.tanggal || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>
+                    <Form.Control
+                      type="time"
+                      name="start_user"
+                      value={editForm.start_user || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>
+                    <Form.Control
+                      type="time"
+                      name="end_user"
+                      value={editForm.end_user || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>{editForm.hasil_durasi_user}</td>
+                  <td>
+                    <Form.Control
+                      type="time"
+                      name="start_ticket"
+                      value={editForm.start_ticket || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>
+                    <Form.Control
+                      type="time"
+                      name="end_ticket"
+                      value={editForm.end_ticket || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>{editForm.hasil_durasi_ticket}</td>
+                  <td>
+                    <Form.Control
+                      name="problem"
+                      value={editForm.problem || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>
+                    <Form.Control
+                      name="action"
+                      value={editForm.action || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>
+                    <Form.Control
+                      name="pic"
+                      value={editForm.pic || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>
+                    <Form.Control
+                      name="nomor_ticket"
+                      value={editForm.nomor_ticket || ""}
+                      onChange={updateEditField}
+                    />
+                  </td>
+                  <td>{editForm.latlong || "-"}</td>
+                  <td>{editForm.latlong2 || "-"}</td>
+                  <td className="text-center">
+                    <Button size="sm" variant="success" className="me-1" onClick={saveEdit}>Simpan</Button>
+                    <Button size="sm" variant="secondary" onClick={cancelEdit}>Batal</Button>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={i}>
+                  <td>{i + 1}</td>
+                  <td>{fmtDate(r.tanggal)}</td>
+                  <td>{fmtTime(r.start_user)}</td>
+                  <td>{fmtTime(r.end_user)}</td>
+                  <td>{r.hasil_durasi_user}</td>
+                  <td>{fmtTime(r.start_ticket)}</td>
+                  <td>{fmtTime(r.end_ticket)}</td>
+                  <td>{r.hasil_durasi_ticket}</td>
+                  <td style={{ maxWidth: 180, whiteSpace: "normal" }}>{r.problem}</td>
+                  <td style={{ maxWidth: 180, whiteSpace: "normal" }}>{r.action}</td>
+                  <td>{r.pic}</td>
+                  <td>{r.nomor_ticket}</td>
+                  <td>{r.latlong || "-"}</td>
+                  <td>{r.latlong2 || "-"}</td>
+                  <td className="text-center">
+                    <Button size="sm" variant="outline-primary" className="me-1" onClick={() => startEdit(i)}><PencilSquare /></Button>
+                    <Button size="sm" variant="outline-danger" onClick={() => delLocal(i)}><X /></Button>
+                  </td>
+                </tr>
+              )
             ))}
           </tbody>
+
         </Table>
       </div>
     </Container>
