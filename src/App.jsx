@@ -7,8 +7,7 @@ import Fasfield from "./pages/Fasfield";
 import Core from "./pages/Core";
 import Osp from "./pages/Osp";
 import Material from "./pages/Material";
-import Boq from "./pages/Boq";
-import Inventory from "./pages/Inventory";
+import Optimalisasi from "./pages/Optimalisasi";
 import Project from "./pages/Project";
 
 function App() {
@@ -29,8 +28,7 @@ function App() {
               <Nav.Link as={Link} to="/core">Core</Nav.Link>
               <Nav.Link as={Link} to="/osp">OSP</Nav.Link>
               <Nav.Link as={Link} to="/material">Material</Nav.Link>
-              {/* <Nav.Link as={Link} to="/boq">BoQ</Nav.Link> */}
-              {/* <Nav.Link as={Link} to="/inventory">Inventory</Nav.Link> */}
+              <Nav.Link as={Link} to="/optimalisasi">Optimalisasi</Nav.Link>
               <Nav.Link as={Link} to="/project">Project</Nav.Link>
             </Nav>
           </Navbar.Collapse>
@@ -46,8 +44,7 @@ function App() {
           <Route path="/core" element={<Core />} />
           <Route path="/osp" element={<Osp />} />
           <Route path="/material" element={<Material />} />
-          <Route path="/boq" element={<Boq />} />
-          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/optimalisasi" element={<Optimalisasi />} />
           <Route path="/project" element={<Project />} />
         </Routes>
       </Container>
