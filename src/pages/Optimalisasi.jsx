@@ -165,7 +165,7 @@ const Optimalisasi = () => {
 
   return (
     <Container className="mt-4">
-      <h2 className="mb-4">Laporan Optimalisasi Material</h2>
+      <h2 className="mb-4">Laporan Material Optimalisasi ODP </h2>
       <Card className="p-3 mb-4">
         <Row>
           <Col md={3}>
