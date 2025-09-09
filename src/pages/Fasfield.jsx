@@ -220,7 +220,7 @@ export function Fasfield() {
         // Buat preview aman
         let thumb;
         try {
-          thumb = await resizeWithOrientation(file, 800, 0.7);
+          thumb = await resizeWithOrientation(file, 600, 0.6);
         } catch {
           thumb = URL.createObjectURL(file);
         }
@@ -504,7 +504,7 @@ export function Fasfield() {
               a.href = URL.createObjectURL(blob);
               a.download = `${form.filename || "laporan"}.pdf`;
               a.click();
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
+              setTimeout(() => URL.revokeObjectURL(url), 100);
             }}
           >
             Unduh PDF
