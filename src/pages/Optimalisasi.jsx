@@ -25,7 +25,7 @@ const Optimalisasi = () => {
   // 🔹 Ambil data dari Google Sheets
   const fetchData = async () => {
   try {
-    const res = await fetch(`${endpoint}?sheet=optimalisasi`);
+    const res = await fetch(`${endpoint}?sheet=Optimalisasi`);
     const json = await res.json();
     if (json.ok && Array.isArray(json.records)) {
       setData(json.records.reverse());
