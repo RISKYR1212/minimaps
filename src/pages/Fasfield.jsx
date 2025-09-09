@@ -8,6 +8,7 @@ import EXIF from "exif-js";
 import heic2any from "heic2any";
 import logoURL from "../assets/logo-jlm.jpeg";
 
+
 /* ======================== KONFIGURASI ======================== */
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
@@ -188,12 +189,15 @@ export function Fasfield() {
   };
   
   /* =============== HEIC TO JPEG================= */
+
+
+/* ====================== KONVERSI HEIC ====================== */
 async function ensureJpeg(file) {
   if (!file) return file;
   const type = (file.type || "").toLowerCase();
   const name = (file.name || "").toLowerCase();
 
-  // VALIDASI FOTO FORMAT HEIC
+  // HEIC / HEIF → konversi ke JPEG
   if (type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif")) {
     try {
       const converted = await heic2any({
@@ -206,18 +210,18 @@ async function ensureJpeg(file) {
       });
     } catch (err) {
       console.error("Gagal konversi HEIC:", err);
-      return file; //FALLBACK
+      return file; // fallback
     }
   }
 
   return file; // sudah jpeg/png
 }
 
- /* ====================== PICK IMAGE FIX ====================== */
+/* ====================== PICK IMAGE FIX ====================== */
 const pickImage = async (idx, useCamera = false) => {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = "image/*,.heic,.heif"; // foto saja
+  input.accept = "image/*,.heic,.heif"; // hanya foto
   if (useCamera) input.setAttribute("capture", "environment");
 
   input.onchange = async (e) => {
@@ -225,22 +229,22 @@ const pickImage = async (idx, useCamera = false) => {
     if (!file) return;
 
     try {
-      // 🔹 Konversi HEIC/HEIF ke JPEG kalau perlu
-      if (!file.type.startsWith("image/") || file.name.match(/\.(heic|heif)$/i)) {
-        const heic2any = (await import("heic2any")).default;
-        const blob = await heic2any({ blob: file, toType: "image/jpeg" });
-        file = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+      // konversi HEIC/HEIF ke jpeg
+      file = await ensureJpeg(file);
+
+      // buat preview aman → resize kalau bisa, kalau gagal pakai URL langsung
+      let thumb;
+      try {
+        thumb = await resizeWithOrientation(file, 800, 0.7);
+      } catch (err) {
+        console.warn("Resize gagal, pakai URL langsung:", err);
+        thumb = URL.createObjectURL(file);
       }
 
-      // 🔹 Buat preview aman (resize + fallback)
-      const thumb = await resizeWithOrientation(file, 800, 0.7).catch(() =>
-        URL.createObjectURL(file)
-      );
-
-      // 🔹 Ambil GPS dari foto (jika ada)
+      // ambil GPS
       let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
-      // 🔹 Update state
+      // update state
       setForm((p) => {
         const list = [...p.temuanList];
         list[idx] = {
@@ -260,6 +264,7 @@ const pickImage = async (idx, useCamera = false) => {
 
   input.click();
 };
+
 
 
   /* ========================= PDF GENERATOR ========================= */
