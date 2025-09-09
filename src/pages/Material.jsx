@@ -22,7 +22,7 @@ const Material = () => {
   const [data, setData] = useState([]);
   const [form, setForm] = useState({
     date: "", pic: "", site: "", material: "", unit: "",
-    saldoAwal: "", terpakai: "", dismantle: "", _index: null
+    saldo_awal: "", terpakai: "", dismantle: "", _index: null
   });
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -49,17 +49,17 @@ const Material = () => {
   };
 
   const handleAdd = async () => {
-    const { date, pic, site, material, unit, saldoAwal, terpakai, dismantle, _index } = form;
-    if (!date || !pic || !site || !material || !unit || saldoAwal === "" || terpakai === "") {
+    const { date, pic, site, material, unit, saldo_awal, terpakai, dismantle, _index } = form;
+    if (!date || !pic || !site || !material || !unit || saldo_awal === "" || terpakai === "") {
       alert("Mohon lengkapi semua kolom wajib!");
       return;
     }
 
-    const sisa = Number(saldoAwal) - Number(terpakai);
+    const sisa = Number(saldo_awal) - Number(terpakai);
     const payload = {
       sheet: "material",
       date, pic, site, material, unit,
-      saldoAwal, terpakai, sisa, dismantle
+      saldo_awal, terpakai, sisa, dismantle
     };
 
     if (editMode && _index !== null) {
@@ -80,7 +80,7 @@ const Material = () => {
         fetchData();
         setForm({
           date: "", pic: "", site: "", material: "", unit: "",
-          saldoAwal: "", terpakai: "", dismantle: "", _index: null
+          saldo_awal: "", terpakai: "", dismantle: "", _index: null
         });
         setEditMode(false);
         alert(editMode ? "Data berhasil diedit!" : "Data berhasil ditambahkan!");
@@ -151,7 +151,7 @@ const Material = () => {
 
           <Form.Group className="col-md-2">
             <Form.Label>Saldo Awal</Form.Label>
-            <Form.Control type="number" value={form.saldoAwal} onChange={e => handleChange("saldoAwal", e.target.value)} />
+            <Form.Control type="number" value={form.saldo_awal} onChange={e => handleChange("saldoAwal", e.target.value)} />
           </Form.Group>
 
           <Form.Group className="col-md-2">
@@ -163,7 +163,7 @@ const Material = () => {
             <Form.Label>Sisa</Form.Label>
             <Form.Control
               type="number"
-              value={form.saldoAwal && form.terpakai ? Number(form.saldoAwal) - Number(form.terpakai) : ""}
+              value={form.saldo_awal && form.terpakai ? Number(form.saldo_awal) - Number(form.terpakai) : ""}
               placeholder="Auto"
               disabled
             />
@@ -223,7 +223,7 @@ const Material = () => {
                   <td>{item.site}</td>
                   <td>{item.material}</td>
                   <td>{item.unit}</td>
-                  <td>{item.saldoAwal}</td>
+                  <td>{item.saldo_awal}</td>
                   <td>{item.terpakai}</td>
                   <td>{item.sisa}</td>
                   <td>{item.dismantle}</td>
@@ -238,13 +238,13 @@ const Material = () => {
                           site: item.site,
                           material: item.material,
                           unit: item.unit,
-                          saldoAwal: item.saldoAwal,
+                          saldo_awal: item.saldo_awal,
                           terpakai: item.terpakai,
                           dismantle: item.dismantle || "",
                           _index: item._index
                         });
                         setEditMode(true);
-                        window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll ke atas
+                        window.scrollTo({ top: 0, behavior: "smooth" }); 
                       }}
 
                     >
