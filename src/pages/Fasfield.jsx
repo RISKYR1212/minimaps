@@ -90,7 +90,7 @@ async function ensureJpeg(file) {
 
   if (type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif")) {
     try {
-      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.65 });
       return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
     } catch (err) {
       console.error("Gagal konversi HEIC:", err);
@@ -102,7 +102,7 @@ async function ensureJpeg(file) {
 
 
 /* === UTIL: Resize + perbaikan orientasi untuk preview/PDF === */
-async function resizeWithOrientation(file, maxSize = 1280, quality = 0.8) {
+async function resizeWithOrientation(file, maxSize = 1200, quality = 0.6) {
   return new Promise(async (resolve, reject) => {
     try {
       const url = URL.createObjectURL(file);
@@ -137,7 +137,7 @@ async function resizeWithOrientation(file, maxSize = 1280, quality = 0.8) {
         ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, swap ? h : w, swap ? w : h);
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
         resolve(dataUrl);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
       };
       img.onerror = () => reject("Gagal load gambar");
       img.src = url;
