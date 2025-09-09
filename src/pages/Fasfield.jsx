@@ -85,12 +85,21 @@ const getExifOrientation = (file) =>
 /* =============== UTIL: Konversi HEIC → JPEG ================= */
 async function ensureJpeg(file) {
   if (!file) return file;
-  if (file.type === "image/heic" || file.type === "image/heif") {
-    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
-    return new File([converted], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+  const type = (file.type || "").toLowerCase();
+  const name = (file.name || "").toLowerCase();
+
+  if (type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif")) {
+    try {
+      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+      return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+    } catch (err) {
+      console.error("Gagal konversi HEIC:", err);
+      return file; // fallback
+    }
   }
   return file;
 }
+
 
 /* === UTIL: Resize + perbaikan orientasi untuk preview/PDF === */
 async function resizeWithOrientation(file, maxSize = 1280, quality = 0.8) {
@@ -188,40 +197,16 @@ export function Fasfield() {
     });
   };
   
-  /* =============== HEIC TO JPEG================= */
+  
 
 
-/* ====================== KONVERSI HEIC ====================== */
-async function ensureJpeg(file) {
-  if (!file) return file;
-  const type = (file.type || "").toLowerCase();
-  const name = (file.name || "").toLowerCase();
 
-  // HEIC / HEIF → konversi ke JPEG
-  if (type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif")) {
-    try {
-      const converted = await heic2any({
-        blob: file,
-        toType: "image/jpeg",
-        quality: 0.85,
-      });
-      return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), {
-        type: "image/jpeg",
-      });
-    } catch (err) {
-      console.error("Gagal konversi HEIC:", err);
-      return file; // fallback
-    }
-  }
-
-  return file; // sudah jpeg/png
-}
 
 /* ====================== PICK IMAGE FIX ====================== */
 const pickImage = async (idx, useCamera = false) => {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = "image/*,.heic,.heif"; // hanya foto
+  input.accept = "image/*,.heic,.heif";
   if (useCamera) input.setAttribute("capture", "environment");
 
   input.onchange = async (e) => {
@@ -229,24 +214,23 @@ const pickImage = async (idx, useCamera = false) => {
     if (!file) return;
 
     try {
-      // konversi HEIC/HEIF ke jpeg
+      // Konversi HEIC → JPEG jika perlu
       file = await ensureJpeg(file);
 
-      // buat preview aman → resize kalau bisa, kalau gagal pakai URL langsung
+      // Buat preview aman
       let thumb;
       try {
         thumb = await resizeWithOrientation(file, 800, 0.7);
-      } catch (err) {
-        console.warn("Resize gagal, pakai URL langsung:", err);
+      } catch {
         thumb = URL.createObjectURL(file);
       }
 
-      // ambil GPS
+      // Ambil GPS dari EXIF, fallback ke browser
       let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
-      // update state
-      setForm((p) => {
-        const list = [...p.temuanList];
+      // Update state
+      setForm((prev) => {
+        const list = [...prev.temuanList];
         list[idx] = {
           ...list[idx],
           fotoFile: file,
@@ -254,7 +238,7 @@ const pickImage = async (idx, useCamera = false) => {
           koordinat: koordinat || "",
           statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
         };
-        return { ...p, temuanList: list };
+        return { ...prev, temuanList: list };
       });
     } catch (err) {
       console.error("Gagal memproses foto:", err);
@@ -264,6 +248,7 @@ const pickImage = async (idx, useCamera = false) => {
 
   input.click();
 };
+
 
 
 
