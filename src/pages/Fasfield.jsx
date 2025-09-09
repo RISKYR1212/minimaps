@@ -196,58 +196,58 @@ export function Fasfield() {
       return { ...prev, temuanList: list };
     });
   };
-  
-  
 
 
 
 
-/* ====================== PICK IMAGE FIX ====================== */
-const pickImage = async (idx, useCamera = false) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/*,.heic,.heif";
-  if (useCamera) input.setAttribute("capture", "environment");
 
-  input.onchange = async (e) => {
-    let file = e.target.files?.[0];
-    if (!file) return;
 
-    try {
-      // Konversi HEIC → JPEG jika perlu
-      file = await ensureJpeg(file);
+  /* ====================== PICK IMAGE FIX ====================== */
+  const pickImage = async (idx, useCamera = false) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,.heic,.heif";
+    if (useCamera) input.setAttribute("capture", "environment");
 
-      // Buat preview aman
-      let thumb;
+    input.onchange = async (e) => {
+      let file = e.target.files?.[0];
+      if (!file) return;
+
       try {
-        thumb = await resizeWithOrientation(file, 800, 0.7);
-      } catch {
-        thumb = URL.createObjectURL(file);
+        // Konversi HEIC → JPEG jika perlu
+        file = await ensureJpeg(file);
+
+        // Buat preview aman
+        let thumb;
+        try {
+          thumb = await resizeWithOrientation(file, 800, 0.7);
+        } catch {
+          thumb = URL.createObjectURL(file);
+        }
+
+        // Ambil GPS dari EXIF, fallback ke browser
+        let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
+
+        // Update state
+        setForm((prev) => {
+          const list = [...prev.temuanList];
+          list[idx] = {
+            ...list[idx],
+            fotoFile: file,
+            fotoThumb: thumb,
+            koordinat: koordinat || "",
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
+          };
+          return { ...prev, temuanList: list };
+        });
+      } catch (err) {
+        console.error("Gagal memproses foto:", err);
+        alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
       }
+    };
 
-      // Ambil GPS dari EXIF, fallback ke browser
-      let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
-
-      // Update state
-      setForm((prev) => {
-        const list = [...prev.temuanList];
-        list[idx] = {
-          ...list[idx],
-          fotoFile: file,
-          fotoThumb: thumb,
-          koordinat: koordinat || "",
-          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
-        };
-        return { ...prev, temuanList: list };
-      });
-    } catch (err) {
-      console.error("Gagal memproses foto:", err);
-      alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
-    }
+    input.click();
   };
-
-  input.click();
-};
 
 
 
@@ -265,7 +265,7 @@ const pickImage = async (idx, useCamera = false) => {
         img.onerror = resolve;
       });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch {}
+    } catch { }
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
