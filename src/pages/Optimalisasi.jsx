@@ -4,7 +4,7 @@ import { Container, Row, Col, Form, Button, Card, Table, Spinner, } from "react-
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-const endpoint = "https://script.google.com/macros/s/AKfycbwSWF6XPHpli13esNtibLU3wnszavZLSz5QEtNy5IkZ0vkWoP8OvrI1DupyzxI_TOsZ/exec?sheet=optimalisasi";
+const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
 const Optimalisasi = () => {
   const [form, setForm] = useState({
