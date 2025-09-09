@@ -199,17 +199,11 @@ export function Fasfield() {
       if (!file) return;
 
       try {
-        // ✅ Konversi HEIC → JPEG
         file = await ensureJpeg(file);
-
-        // ✅ Ambil GPS dari EXIF atau browser
         const koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser()) || "";
-
-        // ✅ Resize & perbaiki orientasi untuk preview & PDF
         let thumb = await resizeWithOrientation(file, 800, 0.7);
-        if (!thumb) thumb = URL.createObjectURL(file); // fallback
+        if (!thumb) thumb = URL.createObjectURL(file);
 
-        // ✅ Update state
         setForm((p) => {
           const list = [...p.temuanList];
           list[idx] = {
@@ -230,22 +224,6 @@ export function Fasfield() {
     input.click();
   };
 
-
-  // ✅ Fungsi hapus foto
-  const hapusFoto = (idx) => {
-    setForm((prev) => {
-      const list = [...prev.temuanList];
-      list[idx] = {
-        ...list[idx],
-        fotoFile: null,
-        fotoThumb: "",
-        koordinat: "",
-        statusGPS: "",
-      };
-      return { ...prev, temuanList: list };
-    });
-  };
-
   /* ========================= PDF GENERATOR ========================= */
   const generatePDFBlob = async () => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -259,7 +237,7 @@ export function Fasfield() {
         img.onerror = resolve;
       });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch { }
+    } catch {}
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
@@ -279,11 +257,8 @@ export function Fasfield() {
       doc.text(`Temuan #${idx + 1}`, 14, y);
       y += 6;
 
-      const textX = 14,
-        imageX = 140;
-      const textWidth = 90,
-        imageWidth = 50,
-        imageHeight = 45;
+      const textX = 14, imageX = 140;
+      const textWidth = 90, imageWidth = 50, imageHeight = 45;
       const lineHeight = 6;
 
       const lines = [
@@ -496,6 +471,7 @@ export function Fasfield() {
             className="w-100"
             onClick={async () => {
               const blob = await generatePDFBlob();
+              const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
               a.download = `${form.filename || "laporan"}.pdf`;
