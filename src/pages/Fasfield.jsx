@@ -85,12 +85,25 @@ const getExifOrientation = (file) =>
 /* =============== UTIL: Konversi HEIC → JPEG ================= */
 async function ensureJpeg(file) {
   if (!file) return file;
-  const type = (file.type || "").toLowerCase();
-  const name = (file.name || "").toLowerCase();
+const type = (file.type || "").toLowerCase();
+const name = (file.name || "").toLowerCase();
 
-  if (type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif")) {
+// Kalau type kosong, paksa cek ekstensi nama
+if (!type && (name.endsWith(".heic") || name.endsWith(".heif"))) {
+  // paksa anggap heic
+}
+
+
+  if (
+    type.includes("heic") || type.includes("heif") ||
+    name.endsWith(".heic") || name.endsWith(".heif")
+  ) {
     try {
-      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.65 });
+      const converted = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.7
+      });
       return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
     } catch (err) {
       console.error("Gagal konversi HEIC:", err);
@@ -203,51 +216,54 @@ export function Fasfield() {
 
 
   /* ====================== PICK IMAGE FIX ====================== */
-  const pickImage = async (idx, useCamera = false) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,.heic,.heif";
-    if (useCamera) input.setAttribute("capture", "environment");
+  const pickImage = async (idx) => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*"; // biar semua format masuk
+  // jangan pakai capture langsung (bug di Samsung)
 
-    input.onchange = async (e) => {
-      let file = e.target.files?.[0];
-      if (!file) return;
+  input.onchange = async (e) => {
+    let file = e.target.files?.[0];
+    if (!file) return;
 
+    console.log("File picked:", file.name, file.type);
+
+    try {
+      // Konversi HEIC → JPEG jika perlu
+      file = await ensureJpeg(file);
+
+      // Buat preview aman
+      let thumb;
       try {
-        // Konversi HEIC → JPEG jika perlu
-        file = await ensureJpeg(file);
-
-        // Buat preview aman
-        let thumb;
-        try {
-          thumb = await resizeWithOrientation(file, 600, 0.6);
-        } catch {
-          thumb = URL.createObjectURL(file);
-        }
-
-        // Ambil GPS dari EXIF, fallback ke browser
-        let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
-
-        // Update state
-        setForm((prev) => {
-          const list = [...prev.temuanList];
-          list[idx] = {
-            ...list[idx],
-            fotoFile: file,
-            fotoThumb: thumb,
-            koordinat: koordinat || "",
-            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
-          };
-          return { ...prev, temuanList: list };
-        });
-      } catch (err) {
-        console.error("Gagal memproses foto:", err);
-        alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
+        thumb = await resizeWithOrientation(file, 600, 0.6);
+      } catch {
+        thumb = URL.createObjectURL(file);
       }
-    };
 
-    input.click();
+      // Ambil GPS dari EXIF, fallback ke browser
+      let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
+
+      // Update state
+      setForm((prev) => {
+        const list = [...prev.temuanList];
+        list[idx] = {
+          ...list[idx],
+          fotoFile: file,
+          fotoThumb: thumb,
+          koordinat: koordinat || "",
+          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
+        };
+        return { ...prev, temuanList: list };
+      });
+    } catch (err) {
+      console.error("Gagal memproses foto:", err);
+      alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
+    }
   };
+
+  input.click();
+};
+
 
 
 
