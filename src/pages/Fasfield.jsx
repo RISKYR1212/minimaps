@@ -8,7 +8,6 @@ import EXIF from "exif-js";
 import heic2any from "heic2any";
 import logoURL from "../assets/logo-jlm.jpeg";
 
-
 /* ======================== KONFIGURASI ======================== */
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
@@ -16,15 +15,19 @@ const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 /* ======================== UTIL DATA ========================= */
 const blankTemuan = () => ({
   deskripsi: "",
+  tindakan: "",
+  hasil: "",
   fotoFile: null,
   fotoThumb: null,
   koordinat: "",
   statusGPS: "",
 });
+
 /* ===================== UTIL: GPS dari EXIF =================== */
 const getGPSFromImage = (file) =>
   new Promise((resolve) => {
-    if (!file || file.type !== "image/jpeg") return resolve(null);
+    if (!file) return resolve(null);
+    // don't require file.type === "image/jpeg" because some browsers return empty type
     try {
       EXIF.getData(file, function () {
         try {
@@ -42,14 +45,14 @@ const getGPSFromImage = (file) =>
               return dd;
             };
             resolve(`${toDD(lat, latRef)}, ${toDD(lon, lonRef)}`);
-          } else {
-            resolve(null);
+            return;
           }
-        } catch {
-          resolve(null);
+        } catch (e) {
+          // fallthrough
         }
+        resolve(null);
       });
-    } catch {
+    } catch (e) {
       resolve(null);
     }
   });
@@ -66,28 +69,40 @@ const ambilGPSBrowser = () =>
   });
 
 /* =============== UTIL: EXIF Orientation Number ============== */
-// ambil orientasi exif
 const getExifOrientation = (file) =>
   new Promise((resolve) => {
-    if (!file || file.type !== "image/jpeg") return resolve(1);
+    if (!file) return resolve(1);
     try {
       EXIF.getData(file, function () {
-        resolve(EXIF.getTag(this, "Orientation") || 1);
+        try {
+          const o = EXIF.getTag(this, "Orientation");
+          resolve(o || 1);
+        } catch {
+          resolve(1);
+        }
       });
     } catch {
       resolve(1);
     }
   });
 
+/* =============== UTIL: Konversi HEIC → JPEG ================= */
 async function ensureJpeg(file) {
   if (!file) return file;
   const type = (file.type || "").toLowerCase();
   const name = (file.name || "").toLowerCase();
-  if (type.includes("heic") || name.endsWith(".heic")) {
+
+  // if type empty but filename indicates heic/heif, treat as HEIC
+  const looksLikeHeic = type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
+
+  if (looksLikeHeic) {
     try {
       const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
-      return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
-    } catch {
+      // heic2any might return a Blob or array (depending), wrap into File
+      const newName = name.replace(/\.[^/.]+$/, ".jpg") || `photo.jpg`;
+      return new File([converted], newName, { type: "image/jpeg" });
+    } catch (err) {
+      console.warn("Gagal konversi HEIC, fallback ke file asli:", err);
       return file;
     }
   }
@@ -100,31 +115,71 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = async () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const orientation = await getExifOrientation(file);
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const orientation = await getExifOrientation(file);
 
-        let w = img.width;
-        let h = img.height;
-        const scale = Math.min(maxSize / w, maxSize / h, 1);
-        w = Math.round(w * scale);
-        h = Math.round(h * scale);
+          let w = img.width;
+          let h = img.height;
+          const scale = Math.min(maxSize / w, maxSize / h, 1);
+          const destW = Math.round(w * scale);
+          const destH = Math.round(h * scale);
 
-        const swap = orientation >= 5 && orientation <= 8;
-        canvas.width = swap ? h : w;
-        canvas.height = swap ? w : h;
+          const swap = orientation >= 5 && orientation <= 8;
+          canvas.width = swap ? destH : destW;
+          canvas.height = swap ? destW : destH;
 
-        switch (orientation) {
-          case 3: ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height); break;
-          case 6: ctx.transform(0, 1, -1, 0, canvas.height, 0); break;
-          case 8: ctx.transform(0, -1, 1, 0, 0, canvas.width); break;
-          default: break;
+          // handle orientation (rotate/flip)
+          // use setTransform + drawImage with scaled dims
+          switch (orientation) {
+            case 2: // horizontal flip
+              ctx.translate(canvas.width, 0);
+              ctx.scale(-1, 1);
+              break;
+            case 3: // 180
+              ctx.translate(canvas.width, canvas.height);
+              ctx.rotate(Math.PI);
+              break;
+            case 4: // vertical flip
+              ctx.translate(0, canvas.height);
+              ctx.scale(1, -1);
+              break;
+            case 5: // transpose
+              ctx.rotate(0.5 * Math.PI);
+              ctx.scale(1, -1);
+              break;
+            case 6: // 90°
+              ctx.rotate(0.5 * Math.PI);
+              ctx.translate(0, -canvas.width);
+              break;
+            case 7: // transverse
+              ctx.rotate(0.5 * Math.PI);
+              ctx.translate(canvas.height, -canvas.width);
+              ctx.scale(-1, 1);
+              break;
+            case 8: // 270°
+              ctx.rotate(-0.5 * Math.PI);
+              ctx.translate(-canvas.height, 0);
+              break;
+            default:
+              break;
+          }
+
+          // draw image scaled to destination dims
+          if (swap) {
+            ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, destH, destW);
+          } else {
+            ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, destW, destH);
+          }
+
+          const dataUrl = canvas.toDataURL("image/jpeg", quality);
+          resolve(dataUrl);
+        } catch (err) {
+          reject(err);
+        } finally {
+          setTimeout(() => URL.revokeObjectURL(url), 100);
         }
-
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/jpeg", quality);
-        resolve(dataUrl);
-        setTimeout(() => URL.revokeObjectURL(url), 100);
       };
       img.onerror = () => reject("Gagal load gambar");
       img.src = url;
@@ -135,8 +190,37 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
 }
 
 /* ========= KOMPONEN ========== */
-export  function Fasfield() {
+export function Fasfield() {
   const [form, setForm] = useState({ temuanList: [blankTemuan()] });
+  const [editMode, setEditMode] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+  const [data, setData] = useState([]);
+  const [loadingData, setLoadingData] = useState(false);
+
+  // persist form
+  useEffect(() => {
+    try {
+      localStorage.setItem("patroliForm", JSON.stringify(form));
+    } catch {}
+  }, [form]);
+
+  // fetch data
+  useEffect(() => {
+    (async () => {
+      if (!endpoint) return;
+      try {
+        setLoadingData(true);
+        const res = await axios.get(`${endpoint}?sheet=patrolli`, { timeout: 20000 });
+        const rows = res?.data?.records;
+        setData(Array.isArray(rows) ? rows : []);
+      } catch (err) {
+        console.error("Gagal ambil data:", err);
+        setData([]);
+      } finally {
+        setLoadingData(false);
+      }
+    })();
+  }, []);
 
   const addTemuan = () => {
     setForm((prev) => ({ ...prev, temuanList: [...prev.temuanList, blankTemuan()] }));
@@ -154,29 +238,49 @@ export  function Fasfield() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
-    if (fromCamera) input.capture = "environment"; // kamera langsung
+    if (fromCamera) input.capture = "environment";
 
     input.onchange = async (e) => {
-      let file = e.target.files?.[0];
-      if (!file) return;
+      const target = e?.target;
+      let file = target?.files?.[0];
+      if (!file) {
+        // cleanup and exit
+        if (target) target.value = "";
+        input.remove();
+        return;
+      }
 
       try {
+        // convert HEIC if needed
         file = await ensureJpeg(file);
+
+        // attempt to extract GPS from EXIF (works if file still has EXIF)
+        let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
+
         const thumb = await resizeWithOrientation(file, 600, 0.7);
 
         setForm((prev) => {
           const list = [...prev.temuanList];
-          list[idx] = { ...list[idx], fotoFile: file, fotoThumb: thumb };
+          list[idx] = {
+            ...list[idx],
+            fotoFile: file,
+            fotoThumb: thumb,
+            koordinat: koordinat || "",
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
+          };
           return { ...prev, temuanList: list };
         });
       } catch (err) {
-        alert("Foto gagal diproses");
+        console.error("Gagal memproses foto:", err);
+        alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
       } finally {
-        e.target.value = "";
+        // reset value BEFORE remove to avoid 'Cannot set properties of null'
+        if (target) target.value = "";
         input.remove();
       }
     };
 
+    // trigger picker
     input.click();
   };
 
@@ -193,7 +297,7 @@ export  function Fasfield() {
         img.onerror = resolve;
       });
       doc.addImage(img, "JPEG", 88, 10, 35, 20);
-    } catch { }
+    } catch {}
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
@@ -213,8 +317,11 @@ export  function Fasfield() {
       doc.text(`Temuan #${idx + 1}`, 14, y);
       y += 6;
 
-      const textX = 14, imageX = 140;
-      const textWidth = 90, imageWidth = 50, imageHeight = 45;
+      const textX = 14,
+        imageX = 140;
+      const textWidth = 90,
+        imageWidth = 50,
+        imageHeight = 45;
       const lineHeight = 6;
 
       const lines = [
@@ -326,7 +433,7 @@ export  function Fasfield() {
                 <Form.Group className="mb-3">
                   <Form.Control
                     type="date"
-                    value={form.tanggal}
+                    value={form.tanggal || ""}
                     onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
                   />
                 </Form.Group>
@@ -335,7 +442,7 @@ export  function Fasfield() {
                 <Form.Group className="mb-3">
                   <Form.Control
                     placeholder="Wilayah"
-                    value={form.wilayah}
+                    value={form.wilayah || ""}
                     onChange={(e) => setForm({ ...form, wilayah: e.target.value })}
                   />
                 </Form.Group>
@@ -344,7 +451,7 @@ export  function Fasfield() {
                 <Form.Group className="mb-3">
                   <Form.Control
                     placeholder="Area"
-                    value={form.area}
+                    value={form.area || ""}
                     onChange={(e) => setForm({ ...form, area: e.target.value })}
                   />
                 </Form.Group>
