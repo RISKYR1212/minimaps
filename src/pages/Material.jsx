@@ -149,11 +149,12 @@ const Material = () => {
             </Form.Select>
           </Form.Group>
 
-          <Form.Control
-            type="number"
-            value={form.saldo_awal}
-            onChange={e => handleChange("saldo_awal", e.target.value)}
-          />
+         
+            <Form.Group className="col-md-2">
+            <Form.Label>saldo awal</Form.Label>
+            <Form.Control type="number" value={form.saldo_awal} onChange={e => handleChange("saldo_awal", e.target.value)} />
+          </Form.Group>
+         
 
 
           <Form.Group className="col-md-2">
