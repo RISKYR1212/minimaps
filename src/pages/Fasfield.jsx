@@ -210,17 +210,11 @@ export function Fasfield() {
     });
   };
 
-
-
-
-
-
   /* ====================== PICK IMAGE FIX ====================== */
   const pickImage = async (idx) => {
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = "image/*"; // biar semua format masuk
-  // jangan pakai capture langsung (bug di Samsung)
+  input.accept = "image/*";
 
   input.onchange = async (e) => {
     let file = e.target.files?.[0];
@@ -243,7 +237,7 @@ export function Fasfield() {
       // Ambil GPS dari EXIF, fallback ke browser
       let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
-      // Update state
+      // Update state temuan tertentu
       setForm((prev) => {
         const list = [...prev.temuanList];
         list[idx] = {
@@ -258,15 +252,15 @@ export function Fasfield() {
     } catch (err) {
       console.error("Gagal memproses foto:", err);
       alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
+    } finally {
+      // reset supaya bisa dipakai lagi
+      e.target.value = "";
+      input.remove();
     }
   };
 
   input.click();
 };
-
-
-
-
 
   /* ========================= PDF GENERATOR ========================= */
   const generatePDFBlob = async () => {
