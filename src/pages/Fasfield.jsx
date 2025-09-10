@@ -16,14 +16,11 @@ const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 /* ======================== UTIL DATA ========================= */
 const blankTemuan = () => ({
   deskripsi: "",
-  tindakan: "",
-  hasil: "",
   fotoFile: null,
-  fotoThumb: "",
+  fotoThumb: null,
   koordinat: "",
   statusGPS: "",
 });
-
 /* ===================== UTIL: GPS dari EXIF =================== */
 const getGPSFromImage = (file) =>
   new Promise((resolve) => {
@@ -69,53 +66,35 @@ const ambilGPSBrowser = () =>
   });
 
 /* =============== UTIL: EXIF Orientation Number ============== */
+// ambil orientasi exif
 const getExifOrientation = (file) =>
   new Promise((resolve) => {
     if (!file || file.type !== "image/jpeg") return resolve(1);
     try {
       EXIF.getData(file, function () {
-        const o = EXIF.getTag(this, "Orientation");
-        resolve(o || 1);
+        resolve(EXIF.getTag(this, "Orientation") || 1);
       });
     } catch {
       resolve(1);
     }
   });
 
-/* =============== UTIL: Konversi HEIC → JPEG ================= */
 async function ensureJpeg(file) {
   if (!file) return file;
-const type = (file.type || "").toLowerCase();
-const name = (file.name || "").toLowerCase();
-
-// Kalau type kosong, paksa cek ekstensi nama
-if (!type && (name.endsWith(".heic") || name.endsWith(".heif"))) {
-  // paksa anggap heic
-}
-
-
-  if (
-    type.includes("heic") || type.includes("heif") ||
-    name.endsWith(".heic") || name.endsWith(".heif")
-  ) {
+  const type = (file.type || "").toLowerCase();
+  const name = (file.name || "").toLowerCase();
+  if (type.includes("heic") || name.endsWith(".heic")) {
     try {
-      const converted = await heic2any({
-        blob: file,
-        toType: "image/jpeg",
-        quality: 0.7
-      });
+      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
       return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
-    } catch (err) {
-      console.error("Gagal konversi HEIC:", err);
-      return file; // fallback
+    } catch {
+      return file;
     }
   }
   return file;
 }
 
-
-/* === UTIL: Resize + perbaikan orientasi untuk preview/PDF === */
-async function resizeWithOrientation(file, maxSize = 1200, quality = 0.6) {
+async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
   return new Promise(async (resolve, reject) => {
     try {
       const url = URL.createObjectURL(file);
@@ -125,7 +104,6 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.6) {
         const ctx = canvas.getContext("2d");
         const orientation = await getExifOrientation(file);
 
-        // Hitung ukuran baru
         let w = img.width;
         let h = img.height;
         const scale = Math.min(maxSize / w, maxSize / h, 1);
@@ -136,18 +114,14 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.6) {
         canvas.width = swap ? h : w;
         canvas.height = swap ? w : h;
 
-        // Perbaiki orientasi
         switch (orientation) {
-          case 2: ctx.transform(-1, 0, 0, 1, canvas.width, 0); break;
           case 3: ctx.transform(-1, 0, 0, -1, canvas.width, canvas.height); break;
-          case 4: ctx.transform(1, 0, 0, -1, 0, canvas.height); break;
-          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
           case 6: ctx.transform(0, 1, -1, 0, canvas.height, 0); break;
-          case 7: ctx.transform(0, -1, -1, 0, canvas.height, canvas.width); break;
           case 8: ctx.transform(0, -1, 1, 0, 0, canvas.width); break;
+          default: break;
         }
 
-        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, swap ? h : w, swap ? w : h);
+        ctx.drawImage(img, 0, 0, w, h);
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
         resolve(dataUrl);
         setTimeout(() => URL.revokeObjectURL(url), 100);
@@ -160,48 +134,14 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.6) {
   });
 }
 
-/* ========================== KOMPONEN ======================== */
-export function Fasfield() {
-  const [form, setForm] = useState(() => {
-    try {
-      const saved = localStorage.getItem("patroliForm");
-      return saved
-        ? JSON.parse(saved)
-        : { tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null };
-    } catch {
-      return { tanggal: "", wilayah: "", area: "", temuanList: [blankTemuan()], filename: "patroli", _index: null };
-    }
-  });
+/* ========= KOMPONEN ========== */
+export  function Fasfield() {
+  const [form, setForm] = useState({ temuanList: [blankTemuan()] });
 
-  const [editMode, setEditMode] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
-  const [data, setData] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
+  const addTemuan = () => {
+    setForm((prev) => ({ ...prev, temuanList: [...prev.temuanList, blankTemuan()] }));
+  };
 
-  // Simpan form di localStorage
-  useEffect(() => {
-    localStorage.setItem("patroliForm", JSON.stringify(form));
-  }, [form]);
-
-  // Ambil data dari GAS
-  useEffect(() => {
-    (async () => {
-      if (!endpoint) return;
-      try {
-        setLoadingData(true);
-        const res = await axios.get(`${endpoint}?sheet=patrolli`, { timeout: 20000 });
-        const rows = res?.data?.records;
-        setData(Array.isArray(rows) ? rows : []);
-      } catch (err) {
-        console.error("Gagal ambil data:", err);
-        setData([]);
-      } finally {
-        setLoadingData(false);
-      }
-    })();
-  }, []);
-
-  // Update field temuan
   const updateTemuan = (i, key, val) => {
     setForm((prev) => {
       const list = [...prev.temuanList];
@@ -210,57 +150,35 @@ export function Fasfield() {
     });
   };
 
-  /* ====================== PICK IMAGE FIX ====================== */
-  const pickImage = async (idx) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/*";
+  const pickImage = async (idx, fromCamera = false) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    if (fromCamera) input.capture = "environment"; // kamera langsung
 
-  input.onchange = async (e) => {
-    let file = e.target.files?.[0];
-    if (!file) return;
+    input.onchange = async (e) => {
+      let file = e.target.files?.[0];
+      if (!file) return;
 
-    console.log("File picked:", file.name, file.type);
-
-    try {
-      // Konversi HEIC → JPEG jika perlu
-      file = await ensureJpeg(file);
-
-      // Buat preview aman
-      let thumb;
       try {
-        thumb = await resizeWithOrientation(file, 600, 0.6);
-      } catch {
-        thumb = URL.createObjectURL(file);
+        file = await ensureJpeg(file);
+        const thumb = await resizeWithOrientation(file, 600, 0.7);
+
+        setForm((prev) => {
+          const list = [...prev.temuanList];
+          list[idx] = { ...list[idx], fotoFile: file, fotoThumb: thumb };
+          return { ...prev, temuanList: list };
+        });
+      } catch (err) {
+        alert("Foto gagal diproses");
+      } finally {
+        e.target.value = "";
+        input.remove();
       }
+    };
 
-      // Ambil GPS dari EXIF, fallback ke browser
-      let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
-
-      // Update state temuan tertentu
-      setForm((prev) => {
-        const list = [...prev.temuanList];
-        list[idx] = {
-          ...list[idx],
-          fotoFile: file,
-          fotoThumb: thumb,
-          koordinat: koordinat || "",
-          statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
-        };
-        return { ...prev, temuanList: list };
-      });
-    } catch (err) {
-      console.error("Gagal memproses foto:", err);
-      alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
-    } finally {
-      // reset supaya bisa dipakai lagi
-      e.target.value = "";
-      input.remove();
-    }
+    input.click();
   };
-
-  input.click();
-};
 
   /* ========================= PDF GENERATOR ========================= */
   const generatePDFBlob = async () => {
