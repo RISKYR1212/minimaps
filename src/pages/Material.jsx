@@ -149,10 +149,12 @@ const Material = () => {
             </Form.Select>
           </Form.Group>
 
-          <Form.Group className="col-md-2">
-            <Form.Label>Saldo Awal</Form.Label>
-            <Form.Control type="number" value={form.saldo_awal} onChange={e => handleChange("saldoAwal", e.target.value)} />
-          </Form.Group>
+          <Form.Control
+            type="number"
+            value={form.saldo_awal}
+            onChange={e => handleChange("saldo_awal", e.target.value)}
+          />
+
 
           <Form.Group className="col-md-2">
             <Form.Label>Terpakai</Form.Label>
@@ -244,7 +246,7 @@ const Material = () => {
                           _index: item._index
                         });
                         setEditMode(true);
-                        window.scrollTo({ top: 0, behavior: "smooth" }); 
+                        window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
 
                     >
