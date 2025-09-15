@@ -74,7 +74,7 @@ const Optimalisasi = () => {
 
     const sisa = Number(saldoAwal) - Number(terpakai);
     const payload = {
-  sheet: "optimalisasi",   
+  sheet: "Optimalisasi",   
   date,
   pic,
   site,
@@ -266,7 +266,7 @@ const Optimalisasi = () => {
             <Form.Group className="mb-2">
               <Form.Label>Dismantle</Form.Label>
               <Form.Control
-                type="number"
+                type="text"
                 name="dismantle"
                 value={form.dismantle}
                 onChange={handleChange}
