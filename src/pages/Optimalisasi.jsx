@@ -22,7 +22,7 @@ const Optimalisasi = () => {
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  // 🔹 Ambil data dari Google Sheets
+  // Ambil data dari Google Sheets
   const fetchData = async () => {
   try {
     const res = await fetch(`${endpoint}?sheet=Optimalisasi`);
@@ -40,12 +40,12 @@ const Optimalisasi = () => {
     fetchData();
   }, []);
 
-  // 🔹 Input handler
+  //  Input handler
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // 🔹 Simpan data (Tambah/Edit)
+  // Simpan data (Tambah/Edit)
   const handleAdd = async () => {
     const {
       date,
@@ -137,7 +137,7 @@ const Optimalisasi = () => {
     setEditMode(true);
   };
 
-  // 🔹 Batalkan edit
+  //  Batalkan edit
   const handleCancelEdit = () => {
     setForm({
       date: "",

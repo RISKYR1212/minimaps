@@ -8,11 +8,11 @@ import EXIF from "exif-js";
 import heic2any from "heic2any";
 import logoURL from "../assets/logo-jlm.jpeg";
 
-/* ======================== KONFIGURASI ======================== */
+//KONFIGURASI 
 const PDF_TITLE = "LAPORAN PATROLI";
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
-/* ======================== UTIL DATA ========================= */
+// UTIL DATA =
 const blankTemuan = () => ({
   deskripsi: "",
   tindakan: "",
@@ -23,11 +23,11 @@ const blankTemuan = () => ({
   statusGPS: "",
 });
 
-/* ===================== UTIL: GPS dari EXIF =================== */
+// UTIL: GPS dari EXIF -
 const getGPSFromImage = (file) =>
   new Promise((resolve) => {
     if (!file) return resolve(null);
-    // don't require file.type === "image/jpeg" because some browsers return empty type
+    
     try {
       EXIF.getData(file, function () {
         try {
@@ -48,7 +48,7 @@ const getGPSFromImage = (file) =>
             return;
           }
         } catch (e) {
-          // fallthrough
+          
         }
         resolve(null);
       });
@@ -57,7 +57,7 @@ const getGPSFromImage = (file) =>
     }
   });
 
-/* =============== UTIL: GPS Browser (fallback) =============== */
+// UTIL: GPS Browser (fallback) 
 const ambilGPSBrowser = () =>
   new Promise((ok) => {
     if (!navigator.geolocation) return ok(null);
@@ -68,7 +68,7 @@ const ambilGPSBrowser = () =>
     );
   });
 
-/* =============== UTIL: EXIF Orientation Number ============== */
+// UTIL: EXIF Orientation Number 
 const getExifOrientation = (file) =>
   new Promise((resolve) => {
     if (!file) return resolve(1);
@@ -86,19 +86,18 @@ const getExifOrientation = (file) =>
     }
   });
 
-/* =============== UTIL: Konversi HEIC → JPEG ================= */
+//* UTIL: Konversi HEIC → JPEG
 async function ensureJpeg(file) {
   if (!file) return file;
   const type = (file.type || "").toLowerCase();
   const name = (file.name || "").toLowerCase();
 
-  // if type empty but filename indicates heic/heif, treat as HEIC
+  
   const looksLikeHeic = type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
 
   if (looksLikeHeic) {
     try {
       const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
-      // heic2any might return a Blob or array (depending), wrap into File
       const newName = name.replace(/\.[^/.]+$/, ".jpg") || `photo.jpg`;
       return new File([converted], newName, { type: "image/jpeg" });
     } catch (err) {
@@ -130,35 +129,34 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
           canvas.width = swap ? destH : destW;
           canvas.height = swap ? destW : destH;
 
-          // handle orientation (rotate/flip)
-          // use setTransform + drawImage with scaled dims
+          
           switch (orientation) {
-            case 2: // horizontal flip
+            case 2: 
               ctx.translate(canvas.width, 0);
               ctx.scale(-1, 1);
               break;
-            case 3: // 180
+            case 3: 
               ctx.translate(canvas.width, canvas.height);
               ctx.rotate(Math.PI);
               break;
-            case 4: // vertical flip
+            case 4: 
               ctx.translate(0, canvas.height);
               ctx.scale(1, -1);
               break;
-            case 5: // transpose
+            case 5: 
               ctx.rotate(0.5 * Math.PI);
               ctx.scale(1, -1);
               break;
-            case 6: // 90°
+            case 6: 
               ctx.rotate(0.5 * Math.PI);
               ctx.translate(0, -canvas.width);
               break;
-            case 7: // transverse
+            case 7: 
               ctx.rotate(0.5 * Math.PI);
               ctx.translate(canvas.height, -canvas.width);
               ctx.scale(-1, 1);
               break;
-            case 8: // 270°
+            case 8: 
               ctx.rotate(-0.5 * Math.PI);
               ctx.translate(-canvas.height, 0);
               break;
@@ -166,7 +164,7 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
               break;
           }
 
-          // draw image scaled to destination dims
+          
           if (swap) {
             ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, destH, destW);
           } else {
@@ -189,7 +187,7 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
   });
 }
 
-/* ========= KOMPONEN ========== */
+// KOMPONEN 
 export function Fasfield() {
   const [form, setForm] = useState({ temuanList: [blankTemuan()] });
   const [editMode, setEditMode] = useState(false);
@@ -197,14 +195,14 @@ export function Fasfield() {
   const [data, setData] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
-  // persist form
+  
   useEffect(() => {
     try {
       localStorage.setItem("patroliForm", JSON.stringify(form));
     } catch {}
   }, [form]);
 
-  // fetch data
+  
   useEffect(() => {
     (async () => {
       if (!endpoint) return;
@@ -244,17 +242,17 @@ export function Fasfield() {
       const target = e?.target;
       let file = target?.files?.[0];
       if (!file) {
-        // cleanup and exit
+        
         if (target) target.value = "";
         input.remove();
         return;
       }
 
       try {
-        // convert HEIC if needed
+        
         file = await ensureJpeg(file);
 
-        // attempt to extract GPS from EXIF (works if file still has EXIF)
+        
         let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
         const thumb = await resizeWithOrientation(file, 600, 0.7);
@@ -274,17 +272,17 @@ export function Fasfield() {
         console.error("Gagal memproses foto:", err);
         alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
       } finally {
-        // reset value BEFORE remove to avoid 'Cannot set properties of null'
+        
         if (target) target.value = "";
         input.remove();
       }
     };
 
-    // trigger picker
+    
     input.click();
   };
 
-  /* ========================= PDF GENERATOR ========================= */
+  //PDF GENERATOR 
   const generatePDFBlob = async () => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     doc.setFont("helvetica", "normal");
@@ -419,7 +417,7 @@ export function Fasfield() {
     }
   };
 
-  /* =========================== RENDER UI =========================== */
+  // RENDER UI 
   return (
     <Container className="py-3">
       <h4 className="text-center mb-3">Laporan Patroli</h4>

@@ -22,26 +22,26 @@ import "leaflet-minimap";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-// ====== CONFIGURABLE: KATALOG HARGA ======
+//  CONFIGURABLE: KATALOG HARGA
 const PRICE_CATALOG = {
-  // Barang (Marker) - per unit
+  
   items: {
     ODP: 750000,          
     ODC: 5500000,
     Tiang: 1200000,
     JC: 450000,           
-    // Tambah lagi kalau perlu...
+    
   },
-  // Kabel (Polyline) - per meter
+  
   cables: {
     Feeder: 18000,        
     Distribusi: 12000,    
     Drop: 5000,           
-    // Tambah lagi kalau perlu...
+    
   },
 };
 
-// ====== UTIL ======
+// UTIL
 const idr = (n) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(
     Math.round(n || 0)
@@ -58,7 +58,7 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// ====== MAP CONTROLS ======
+//  MAP CONTROLS 
 const MapControls = ({ onAddAsset, onPolylineComplete }) => {
   const map = useMap();
   const mapRef = useRef(null);
@@ -125,7 +125,6 @@ const MapControls = ({ onAddAsset, onPolylineComplete }) => {
 
         let finalType = type || "ODP";
         if (!preset.includes(finalType) && finalType !== "Custom") {
-          // Jika salah ketik, fallback ke Custom
           finalType = "Custom";
         }
         if (finalType === "Custom") {
@@ -212,7 +211,7 @@ const MapControls = ({ onAddAsset, onPolylineComplete }) => {
   return null;
 };
 
-// ====== MAIN COMPONENT ======
+//  MAIN COMPONENT 
 const ProjectPlanner = () => {
   const [projectName, setProjectName] = useState("Project Tanpa Nama");
   const [assets, setAssets] = useState([]);
@@ -230,7 +229,6 @@ const ProjectPlanner = () => {
           const unitPrice = field === "unitPrice" ? Number(value) || 0 : a.unitPrice || 0;
           return { ...a, qty, unitPrice, totalPrice: qty * unitPrice };
         } else {
-          // cable: unitPrice only editable; length is from geometry
           const unitPrice = field === "unitPrice" ? Number(value) || 0 : a.unitPrice || 0;
           return { ...a, unitPrice, totalPrice: (a.length_m || 0) * unitPrice };
         }
@@ -248,13 +246,12 @@ const ProjectPlanner = () => {
         type: a.type,
         unit: a.unit,
         qty: 0,
-        unitPrice: a.unitPrice || 0, // akan distandarkan terakhir
+        unitPrice: a.unitPrice || 0, 
         totalPrice: 0,
       };
       if (a.kind === "item") {
         rec.qty += a.qty || 0;
-        // untuk unitPrice, ambil rata-rata tertimbang jika beda
-        // atau biarkan terakhir (sederhana). Di sini pilih rata-rata tertimbang:
+        
         const weightOld = rec.qty - (a.qty || 0);
         rec.unitPrice =
           (rec.unitPrice * weightOld + (a.unitPrice || 0) * (a.qty || 0)) /
@@ -528,9 +525,6 @@ const ProjectPlanner = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/">OSM</a>'
           />
-
-          {/* contoh polyline route awal (opsional) */}
-          {/* <Polyline positions={[[-6.914744,107.60981],[-6.918,107.62]]} pathOptions={{ color: "purple", weight: 4 }} /> */}
 
           <MapControls onAddAsset={addAsset} />
         </MapContainer>
