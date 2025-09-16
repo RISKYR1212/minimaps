@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button, Card, Table, Spinner, } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+// import { e, m } from "@vite-pwa/assets-generator/dist/shared/assets-generator.CtXVyBkH.js";
 
 const endpoint = import.meta.env.VITE_GAS_ENDPOINT;
 
@@ -18,22 +19,27 @@ const Optimalisasi = () => {
     dismantle: "",
     _index: null,
   });
+
+  const allMaterials = ["Spliter 1:4", "Patchore 15M SC-SC", "Pigtail SC", " Barel"];
+  const allUnits = ["meter", "pcs", "pack", "unit"];
+  const allPICs = ["HARY", "HENDRA", "SYIFA"];
+
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
   // Ambil data dari Google Sheets
   const fetchData = async () => {
-  try {
-    const res = await fetch(`${endpoint}?sheet=Optimalisasi`);
-    const json = await res.json();
-    if (json.ok && Array.isArray(json.records)) {
-      setData(json.records.reverse());
+    try {
+      const res = await fetch(`${endpoint}?sheet=Optimalisasi`);
+      const json = await res.json();
+      if (json.ok && Array.isArray(json.records)) {
+        setData(json.records.reverse());
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
     }
-  } catch (err) {
-    console.error("Fetch error:", err);
-  }
-};
+  };
 
 
   useEffect(() => {
@@ -74,17 +80,17 @@ const Optimalisasi = () => {
 
     const sisa = Number(saldoAwal) - Number(terpakai);
     const payload = {
-  sheet: "Optimalisasi",   
-  date,
-  pic,
-  site,
-  material,
-  unit,
-  saldo_awal: saldoAwal,
-  terpakai,
-  sisa,
-  dismantle,
-};
+      sheet: "Optimalisasi",
+      date,
+      pic,
+      site,
+      material,
+      unit,
+      saldo_awal: saldoAwal,
+      terpakai,
+      sisa,
+      dismantle,
+    };
 
 
     if (editMode && _index !== null) {
@@ -165,7 +171,7 @@ const Optimalisasi = () => {
 
   return (
     <Container className="mt-4">
-      <h2 className="mb-4">Laporan Material Optimalisasi ODP </h2>
+      <h2 className="mb-4">Report Material Optimalisasi ODP  </h2>
       <Card className="p-3 mb-4">
         <Row>
           <Col md={3}>
@@ -182,12 +188,10 @@ const Optimalisasi = () => {
           <Col md={3}>
             <Form.Group className="mb-2">
               <Form.Label>PIC</Form.Label>
-              <Form.Control
-                type="text"
-                name="pic"
-                value={form.pic}
-                onChange={handleChange}
-              />
+              <Form.Select value={form.pic} onChange={e => handleChange("pic", e.target.value)}>
+                <option value="">Pilih PIC</option>
+                {allPICs.map((p, i) => <option key={i} value={p}>{p}</option>)}
+              </Form.Select>
             </Form.Group>
           </Col>
           <Col md={3}>
@@ -204,12 +208,10 @@ const Optimalisasi = () => {
           <Col md={3}>
             <Form.Group className="mb-2">
               <Form.Label>Material</Form.Label>
-              <Form.Control
-                type="text"
-                name="material"
-                value={form.material}
-                onChange={handleChange}
-              />
+              <Form.Select value={form.material} onChange={e => handleChange("material", e.target.value)}>
+                <option value="">Pilih Material</option>
+                {allMaterials.map((m, i) => <option key={i} value={m}>{m}</option>)}
+              </Form.Select>
             </Form.Group>
           </Col>
         </Row>
