@@ -509,10 +509,10 @@ function Fasfield() {
                     />
                   </Form.Group>
 
-                  <div className="d-flex gap-2 mb-2">
-                    <Button size="sm" onClick={() => pickImage(i, true)}>
-                      Kamera
-                    </Button>
+                    <div className="d-flex gap-2 mb-2">
+                      <Button size="sm" onClick={() => pickImage(i, true)}>
+                        Kamera
+                      </Button>
                     <Button size="sm" variant="secondary" onClick={() => pickImage(i, false)}>
                       Galeri
                     </Button>
@@ -562,7 +562,7 @@ function Fasfield() {
               a.href = url;
               a.download = `${form.filename || "laporan"}.pdf`;
               a.click();
-              setTimeout(() => URL.revokeObjectURL(url), 100);
+              setTimeout(() => URL.revokeObjectURL(url), 2000);
             }}
           >
             Unduh PDF
