@@ -1,3 +1,4 @@
+// src/pages/Fasfield.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Container, Row, Col, Form, Button, Card, Table, Spinner } from "react-bootstrap";
@@ -27,7 +28,7 @@ const blankTemuan = () => ({
 const getGPSFromImage = (file) =>
   new Promise((resolve) => {
     if (!file) return resolve(null);
-    
+
     try {
       EXIF.getData(file, function () {
         try {
@@ -48,7 +49,7 @@ const getGPSFromImage = (file) =>
             return;
           }
         } catch (e) {
-          
+          // ignore
         }
         resolve(null);
       });
@@ -92,24 +93,35 @@ async function ensureJpeg(file) {
   const type = (file.type || "").toLowerCase();
   const name = (file.name || "").toLowerCase();
 
-  
-  const looksLikeHeic = type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
+  const isHeic = type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
+  const isPng = type.includes("png") || name.endsWith(".png");
 
-  if (looksLikeHeic) {
-    try {
+  try {
+    // HEIC -> JPEG
+    if (isHeic) {
       const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
-      const newName = name.replace(/\.[^/.]+$/, ".jpg") || `photo.jpg`;
-      return new File([converted], newName, { type: "image/jpeg" });
-    } catch (err) {
-      console.warn("Gagal konversi HEIC, fallback ke file asli:", err);
-      return file;
+      return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
     }
+
+    // PNG -> JPEG
+    if (isPng) {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext("2d").drawImage(bitmap, 0, 0);
+      const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.8));
+      return new File([blob], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+    }
+  } catch (err) {
+    console.warn("Konversi gagal, pakai file asli:", err);
   }
   return file;
 }
 
 async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
   return new Promise(async (resolve, reject) => {
+    if (!file) return resolve(null);
     try {
       const url = URL.createObjectURL(file);
       const img = new Image();
@@ -129,34 +141,34 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
           canvas.width = swap ? destH : destW;
           canvas.height = swap ? destW : destH;
 
-          
+          // apply orientation transforms
           switch (orientation) {
-            case 2: 
+            case 2:
               ctx.translate(canvas.width, 0);
               ctx.scale(-1, 1);
               break;
-            case 3: 
+            case 3:
               ctx.translate(canvas.width, canvas.height);
               ctx.rotate(Math.PI);
               break;
-            case 4: 
+            case 4:
               ctx.translate(0, canvas.height);
               ctx.scale(1, -1);
               break;
-            case 5: 
+            case 5:
               ctx.rotate(0.5 * Math.PI);
               ctx.scale(1, -1);
               break;
-            case 6: 
+            case 6:
               ctx.rotate(0.5 * Math.PI);
               ctx.translate(0, -canvas.width);
               break;
-            case 7: 
+            case 7:
               ctx.rotate(0.5 * Math.PI);
               ctx.translate(canvas.height, -canvas.width);
               ctx.scale(-1, 1);
               break;
-            case 8: 
+            case 8:
               ctx.rotate(-0.5 * Math.PI);
               ctx.translate(-canvas.height, 0);
               break;
@@ -164,7 +176,6 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
               break;
           }
 
-          
           if (swap) {
             ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, destH, destW);
           } else {
@@ -187,22 +198,22 @@ async function resizeWithOrientation(file, maxSize = 1200, quality = 0.7) {
   });
 }
 
-// KOMPONEN 
-export function Fasfield() {
+// ---------- COMPONENT ----------
+function Fasfield() {
   const [form, setForm] = useState({ temuanList: [blankTemuan()] });
   const [editMode, setEditMode] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
   const [data, setData] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
-  
+  // persist ke localStorage
   useEffect(() => {
     try {
       localStorage.setItem("patroliForm", JSON.stringify(form));
     } catch {}
   }, [form]);
 
-  
+  // fetch data awal dari endpoint bila tersedia
   useEffect(() => {
     (async () => {
       if (!endpoint) return;
@@ -232,6 +243,7 @@ export function Fasfield() {
     });
   };
 
+  // pickImage sekarang berada di dalam komponen (akses setForm)
   const pickImage = async (idx, fromCamera = false) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -242,20 +254,33 @@ export function Fasfield() {
       const target = e?.target;
       let file = target?.files?.[0];
       if (!file) {
-        
         if (target) target.value = "";
         input.remove();
         return;
       }
 
       try {
-        
+        console.log("📂 File diupload:", file.type, file.name, file.size);
+
+        // konversi
         file = await ensureJpeg(file);
 
-        
+        // ambil GPS (EXIF) -> fallback
         let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
-        const thumb = await resizeWithOrientation(file, 600, 0.7);
+        // resize thumbnail (kalau gagal, turun ukuran)
+        let thumb = null;
+        try {
+          thumb = await resizeWithOrientation(file, 1000, 0.7);
+        } catch (err) {
+          console.warn("Resize gagal, coba ukuran lebih kecil:", err);
+          try {
+            thumb = await resizeWithOrientation(file, 800, 0.7);
+          } catch (e) {
+            console.error("Resize benar-benar gagal:", e);
+            thumb = null;
+          }
+        }
 
         setForm((prev) => {
           const list = [...prev.temuanList];
@@ -264,25 +289,23 @@ export function Fasfield() {
             fotoFile: file,
             fotoThumb: thumb,
             koordinat: koordinat || "",
-            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia",
+            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia, aktifkan GPS",
           };
           return { ...prev, temuanList: list };
         });
       } catch (err) {
         console.error("Gagal memproses foto:", err);
-        alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid.");
+        alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid atau coba ukuran lebih kecil.");
       } finally {
-        
         if (target) target.value = "";
         input.remove();
       }
     };
 
-    
     input.click();
   };
 
-  //PDF GENERATOR 
+  // PDF GENERATOR
   const generatePDFBlob = async () => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     doc.setFont("helvetica", "normal");
@@ -294,7 +317,12 @@ export function Fasfield() {
         img.onload = resolve;
         img.onerror = resolve;
       });
-      doc.addImage(img, "JPEG", 88, 10, 35, 20);
+      // try-catch: addImage dapat melempar error kalau data rusak
+      try {
+        doc.addImage(img, "JPEG", 88, 10, 35, 20);
+      } catch (e) {
+        console.warn("logo gagal ditambahkan ke PDF:", e);
+      }
     } catch {}
 
     doc.setFontSize(14);
@@ -503,10 +531,7 @@ export function Fasfield() {
               </Card>
             ))}
 
-            <Button
-              onClick={() => setForm((p) => ({ ...p, temuanList: [...p.temuanList, blankTemuan()] }))}
-              variant="outline-primary"
-            >
+            <Button onClick={addTemuan} variant="outline-primary">
               Tambah Temuan
             </Button>
           </Form>
@@ -534,7 +559,7 @@ export function Fasfield() {
               const blob = await generatePDFBlob();
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
+              a.href = url;
               a.download = `${form.filename || "laporan"}.pdf`;
               a.click();
               setTimeout(() => URL.revokeObjectURL(url), 100);

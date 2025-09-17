@@ -159,7 +159,7 @@ const Optimalisasi = () => {
     setEditMode(false);
   };
 
-  // 🔹 Export ke Excel
+  // Export ke Excel
   const handleExport = () => {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
