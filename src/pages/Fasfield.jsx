@@ -431,7 +431,7 @@ function Fasfield() {
         }
         await axios.post(endpoint, new URLSearchParams(payload), {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          timeout: 20000,
+          timeout: 2000,
         });
       }
 
