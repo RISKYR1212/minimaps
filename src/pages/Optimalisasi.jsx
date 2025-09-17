@@ -188,10 +188,12 @@ const Optimalisasi = () => {
           <Col md={3}>
             <Form.Group className="mb-2">
               <Form.Label>PIC</Form.Label>
-              <Form.Select value={form.pic} onChange={e => handleChange("pic", e.target.value)}>
+              <Form.Select name="pic" value={form.pic} onChange={handleChange}>
                 <option value="">Pilih PIC</option>
                 {allPICs.map((p, i) => <option key={i} value={p}>{p}</option>)}
               </Form.Select>
+
+
             </Form.Group>
           </Col>
           <Col md={3}>
@@ -208,10 +210,11 @@ const Optimalisasi = () => {
           <Col md={3}>
             <Form.Group className="mb-2">
               <Form.Label>Material</Form.Label>
-              <Form.Select value={form.material} onChange={e => handleChange("material", e.target.value)}>
+              <Form.Select name="material" value={form.material} onChange={handleChange}>
                 <option value="">Pilih Material</option>
                 {allMaterials.map((m, i) => <option key={i} value={m}>{m}</option>)}
               </Form.Select>
+
             </Form.Group>
           </Col>
         </Row>
