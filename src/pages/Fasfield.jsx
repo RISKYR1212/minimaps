@@ -95,9 +95,10 @@ async function ensureJpeg(file) {
 
   const isHeic = type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
   const isPng = type.includes("png") || name.endsWith(".png");
+  const isWebp = type.includes("webp") || name.endsWith(".webp");
 
   try {
-    // HEIC -> JPEG
+    // HEIC/HEIF -> JPEG
     if (isHeic) {
       const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
       return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
@@ -113,9 +114,26 @@ async function ensureJpeg(file) {
       const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.8));
       return new File([blob], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
     }
+
+    // WebP -> JPEG
+    if (isWebp) {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext("2d").drawImage(bitmap, 0, 0);
+      const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.8));
+      return new File([blob], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+    }
   } catch (err) {
     console.warn("Konversi gagal, pakai file asli:", err);
   }
+
+  // fallback terakhir: kasih warning kalau bukan jpg/png/heic/webp
+  if (!type.includes("jpeg") && !type.includes("jpg")) {
+    alert("Format foto tidak didukung penuh. Gunakan JPG/PNG/HEIC/WebP.");
+  }
+
   return file;
 }
 
@@ -247,7 +265,7 @@ function Fasfield() {
   const pickImage = async (idx, fromCamera = false) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = "image/jpeg,image/png,image/heic,image/heif,image/webp";
     if (fromCamera) input.capture = "environment";
 
     input.onchange = async (e) => {
