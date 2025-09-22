@@ -501,68 +501,80 @@ function Fasfield() {
             </Row>
 
             {form.temuanList.map((t, i) => (
-  <Card key={i} className="mb-3">
-    <Card.Body>
-      {/* Input teks */}
-      <Form.Group className="mb-2">
-        <Form.Control
-          placeholder="Deskripsi"
-          value={t.deskripsi}
-          onChange={(e) => updateTemuan(i, "deskripsi", e.target.value)}
-        />
-      </Form.Group>
+              <Card key={i} className="mb-3">
+                <Card.Body>
+                  {/* Input teks */}
+                  <Form.Group className="mb-2">
+                    <Form.Control
+                      placeholder="Deskripsi"
+                      value={t.deskripsi}
+                      onChange={(e) => updateTemuan(i, "deskripsi", e.target.value)}
+                    />
+                  </Form.Group>
 
-      <Form.Group className="mb-2">
-        <Form.Control
-          placeholder="Tindakan"
-          value={t.tindakan}
-          onChange={(e) => updateTemuan(i, "tindakan", e.target.value)}
-        />
-      </Form.Group>
+                  <Form.Group className="mb-2">
+                    <Form.Control
+                      placeholder="Tindakan"
+                      value={t.tindakan}
+                      onChange={(e) => updateTemuan(i, "tindakan", e.target.value)}
+                    />
+                  </Form.Group>
 
-      <Form.Group className="mb-2">
-        <Form.Control
-          placeholder="Hasil"
-          value={t.hasil}
-          onChange={(e) => updateTemuan(i, "hasil", e.target.value)}
-        />
-      </Form.Group>
+                  <Form.Group className="mb-2">
+                    <Form.Control
+                      placeholder="Hasil"
+                      value={t.hasil}
+                      onChange={(e) => updateTemuan(i, "hasil", e.target.value)}
+                    />
+                  </Form.Group>
 
-      {/* Input foto khusus temuan ini */}
-      <Form.Group className="mb-2">
-        <Form.Label>Foto Temuan {i + 1}</Form.Label>
-        <Form.Control
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={async (e) => {
-            let file = e.target.files[0];
-            if (!file) return;
+                  {/* Input foto khusus temuan ini */}
+                  <Form.Group className="mb-2">
+                    <Form.Label>Foto Temuan {i + 1}</Form.Label>
+                    <Form.Control
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={async (e) => {
+                        let file = e.target.files[0];
+                        if (!file) return;
 
-            file = await ensureJpeg(file);
-            const thumb = URL.createObjectURL(file);
+                        file = await ensureJpeg(file);
 
-            // update field foto di temuan i
-            updateTemuan(i, "fotoFile", file);
-            updateTemuan(i, "fotoThumb", thumb);
-          }}
-        />
-      </Form.Group>
+                        // Ambil GPS dari EXIF → fallback ke GPS browser
+                        let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
-      {/* Preview foto khusus temuan ini */}
-      {t.fotoThumb && (
-        <div className="mt-2">
-          <img
-            src={t.fotoThumb}
-            alt={`Preview temuan ${i + 1}`}
-            className="img-fluid rounded"
-            style={{ maxHeight: "260px", objectFit: "contain" }}
-          />
-        </div>
-      )}
-    </Card.Body>
-  </Card>
-))}
+                        // Buat thumbnail (resize + orientasi)
+                        const thumb = await resizeWithOrientation(file, 1000, 0.7);
+
+                        // Update state
+                        updateTemuan(i, "fotoFile", file);
+                        updateTemuan(i, "fotoThumb", thumb);
+                        updateTemuan(i, "koordinat", koordinat || "");
+                        updateTemuan(
+                          i,
+                          "statusGPS",
+                          koordinat ? "Lokasi berhasil diambil" : "GPS tidak tersedia, pastikan GPS aktif."
+                        );
+                      }}
+                    />
+
+                  </Form.Group>
+
+                  {/* Preview foto khusus temuan ini */}
+                  {t.fotoThumb && (
+                    <div className="mt-2">
+                      <img
+                        src={t.fotoThumb}
+                        alt={`Preview temuan ${i + 1}`}
+                        className="img-fluid rounded"
+                        style={{ maxHeight: "260px", objectFit: "contain" }}
+                      />
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            ))}
 
             <Button onClick={addTemuan} variant="outline-primary">
               Tambah Temuan
