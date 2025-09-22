@@ -209,7 +209,7 @@ function Fasfield() {
   useEffect(() => {
     try {
       localStorage.setItem("patroliForm", JSON.stringify(form));
-    } catch {}
+    } catch { }
   }, [form]);
 
   // fetch data awal dari endpoint bila tersedia
@@ -244,72 +244,72 @@ function Fasfield() {
 
   // pickImage sekarang berada di dalam komponen (akses setForm)
   // pickImage sekarang berada di dalam komponen (akses setForm)
-const pickImage = async (idx, fromCamera = false) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/jpeg,image/png,image/heic,image/heif,image/webp";
-  if (fromCamera) input.capture = "environment";
+  const pickImage = async (idx, fromCamera = false) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/heic,image/heif,image/webp";
+    if (fromCamera) input.capture = "environment";
 
-  input.onchange = async (e) => {
-    const target = e?.target;
-    let file = target?.files?.[0];
-    if (!file) {
-      if (target) target.value = "";
-      input.remove();
-      return;
-    }
-
-    try {
-      console.log("📂 File diupload:", file.type, file.name, file.size);
-
-      // 🔔 ALERT AKTIFKAN GPS
-      alert("Aktifkan GPS untuk mendapatkan lokasi dari foto.");
-
-      // konversi
-      file = await ensureJpeg(file);
-
-      // ambil GPS (EXIF) -> fallback
-      let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
-
-      // resize thumbnail (kalau gagal, turun ukuran)
-      let thumb = null;
-      try {
-        thumb = await resizeWithOrientation(file, 1000, 0.7);
-      } catch (err) {
-        console.warn("Resize gagal, coba ukuran lebih kecil:", err);
-        try {
-          thumb = await resizeWithOrientation(file, 800, 0.7);
-        } catch (e) {
-          console.error("Resize benar-benar gagal:", e);
-          thumb = null;
-        }
+    input.onchange = async (e) => {
+      const target = e?.target;
+      let file = target?.files?.[0];
+      if (!file) {
+        if (target) target.value = "";
+        input.remove();
+        return;
       }
 
-      // update state
-      setForm((prev) => {
-        const list = [...prev.temuanList];
-        list[idx] = {
-          ...list[idx],
-          fotoFile: file,
-          fotoThumb: thumb,
-          koordinat: koordinat || "",
-          statusGPS: koordinat
-            ? "Lokasi berhasil diambil"
-            : "GPS tidak tersedia, pastikan GPS aktif.",
-        };
-        return { ...prev, temuanList: list };
-      });
-    } catch (err) {
-      console.error("Gagal memproses foto:", err);
-      alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid atau coba ukuran lebih kecil.");
-    } finally {
-      if (target) target.value = "";
-      input.remove();
-    }
-  };
+      try {
+        console.log("📂 File diupload:", file.type, file.name, file.size);
 
-  input.click();
-};
+        // 🔔 ALERT AKTIFKAN GPS
+        alert("Aktifkan GPS untuk mendapatkan lokasi dari foto.");
+
+        // konversi
+        file = await ensureJpeg(file);
+
+        // ambil GPS (EXIF) -> fallback
+        let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
+
+        // resize thumbnail (kalau gagal, turun ukuran)
+        let thumb = null;
+        try {
+          thumb = await resizeWithOrientation(file, 1000, 0.7);
+        } catch (err) {
+          console.warn("Resize gagal, coba ukuran lebih kecil:", err);
+          try {
+            thumb = await resizeWithOrientation(file, 800, 0.7);
+          } catch (e) {
+            console.error("Resize benar-benar gagal:", e);
+            thumb = null;
+          }
+        }
+
+        // update state
+        setForm((prev) => {
+          const list = [...prev.temuanList];
+          list[idx] = {
+            ...list[idx],
+            fotoFile: file,
+            fotoThumb: thumb,
+            koordinat: koordinat || "",
+            statusGPS: koordinat
+              ? "Lokasi berhasil diambil"
+              : "GPS tidak tersedia, pastikan GPS aktif.",
+          };
+          return { ...prev, temuanList: list };
+        });
+      } catch (err) {
+        console.error("Gagal memproses foto:", err);
+        alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid atau coba ukuran lebih kecil.");
+      } finally {
+        if (target) target.value = "";
+        input.remove();
+      }
+    };
+
+    input.click();
+  };
 
   // PDF GENERATOR
   const generatePDFBlob = async () => {
@@ -329,7 +329,7 @@ const pickImage = async (idx, fromCamera = false) => {
       } catch (e) {
         console.warn("logo gagal ditambahkan ke PDF:", e);
       }
-    } catch {}
+    } catch { }
 
     doc.setFontSize(14);
     doc.text(PDF_TITLE, 105, 35, { align: "center" });
@@ -416,13 +416,13 @@ const pickImage = async (idx, fromCamera = false) => {
   };
   const [preview, setPreview] = useState(null);
 
-const handleFileChange = async (e) => {
-  let file = e.target.files[0];
-  if (!file) return;
+  const handleFileChange = async (e) => {
+    let file = e.target.files[0];
+    if (!file) return;
 
-  file = await ensureJpeg(file); // convert jika HEIC
-  setPreview(URL.createObjectURL(file));
-};
+    file = await ensureJpeg(file); // convert jika HEIC
+    setPreview(URL.createObjectURL(file));
+  };
 
 
   const submitToSheets = async () => {
@@ -525,20 +525,20 @@ const handleFileChange = async (e) => {
                     />
                   </Form.Group>
 
-                    <Form.Group>
-  <Form.Label>tambahkan foto</Form.Label>
-  <Form.Control type="file" accept="image/*" onChange={handleFileChange} />
-</Form.Group>
+                  <Form.Group>
+                    <Form.Label>tambahkan foto</Form.Label>
+                    <Form.Control type="file" accept="image/*" onChange={handleFileChange} />
+                  </Form.Group>
 
-{preview && (
-  <div className="mt-1">
-    <img
-      src={preview}
-      alt="preview"
-      style={{ maxWidth: "100%", borderRadius: "8px" }}
-    />
-  </div>
-)}
+                  {preview && (
+                    <div className="mt-1">
+                      <img
+                        src={preview}
+                        alt="preview"
+                        style={{ maxWidth: "100%", borderRadius: "8px" }}
+                      />
+                    </div>
+                  )}
 
 
                   {t.fotoThumb ? (
