@@ -1,13 +1,12 @@
 // src/pages/Osp.jsx
 import axios from "axios";
 import React, { useState, useEffect } from "react";
-import {
-  Container, Row, Col, Form, Button, Table, Card
-} from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Table, Card } from "react-bootstrap";
 import { X, PencilSquare } from "react-bootstrap-icons";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import "dayjs/locale/id";
+import EXIF from "exif-js";
 
 dayjs.extend(duration);
 dayjs.locale("id");
@@ -99,31 +98,34 @@ export function Osp() {
     });
   };
 
-
   const handlePhotoChange = (e, field) => {
-    const file = e.target.files && e.target.files[0];
+    const file = e.target.files[0];
     if (!file) return;
 
-    // Try to get navigator.geolocation position
-    if (!navigator.geolocation) {
-      alert("Geolocation tidak didukung oleh browser ini.");
-      return;
+    // Simpan foto ke state (URL sementara untuk preview/PDF)
+    setForm(prev => ({ ...prev, [`${field}_photo`]: URL.createObjectURL(file) }));
+
+    // Langsung kasih alert agar user sadar GPS harus aktif
+    alert("Aktifkan GPS agar lokasi sesuai dengan foto yang diambil!");
+
+    // Ambil lokasi realtime dari browser
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
+          setForm(prev => ({ ...prev, [field]: coords }));
+        },
+        err => {
+          alert("Tidak bisa mengambil lokasi. Pastikan GPS aktif di browser.");
+          console.error("Geolocation error:", err);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      alert("Browser tidak mendukung geolocation.");
     }
 
-    // Inform user (optional) and request position
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
-        setForm(prev => ({ ...prev, [field]: coords }));
-      },
-      err => {
-        console.error("Geolocation error:", err);
-        alert("Tidak dapat mengambil lokasi. Pastikan izin lokasi diaktifkan.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-
-    // Reset input so same file can be selected later if needed
+    // Reset input supaya bisa pilih ulang foto
     e.target.value = null;
   };
 
@@ -316,8 +318,21 @@ export function Osp() {
               <Col xs={12} md={6}>
                 <Form.Label>Upload Foto 1</Form.Label>
                 <div className="d-flex gap-2 mb-2">
-                  <input id="photo1Cam" type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => handlePhotoChange(e, "latlong")} />
-                  <input id="photo1File" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handlePhotoChange(e, "latlong")} />
+                  <input
+                    id="photo1Cam"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: "none" }}
+                    onChange={e => handlePhotoChange(e, "latlong")}
+                  />
+                  <input
+                    id="photo1File"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={e => handlePhotoChange(e, "latlong")}
+                  />
                   <Button size="sm" onClick={() => document.getElementById("photo1Cam").click()}>Kamera</Button>
                   <Button size="sm" variant="secondary" onClick={() => document.getElementById("photo1File").click()}>Galeri</Button>
                 </div>
@@ -325,10 +340,23 @@ export function Osp() {
               </Col>
 
               <Col xs={12} md={6}>
-                <Form.Label>Upload Foto 2 </Form.Label>
+                <Form.Label>Upload Foto 2</Form.Label>
                 <div className="d-flex gap-2 mb-2">
-                  <input id="photo2Cam" type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={e => handlePhotoChange(e, "latlong2")} />
-                  <input id="photo2File" type="file" accept="image/*" style={{ display: "none" }} onChange={e => handlePhotoChange(e, "latlong2")} />
+                  <input
+                    id="photo2Cam"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: "none" }}
+                    onChange={e => handlePhotoChange(e, "latlong2")}
+                  />
+                  <input
+                    id="photo2File"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={e => handlePhotoChange(e, "latlong2")}
+                  />
                   <Button size="sm" onClick={() => document.getElementById("photo2Cam").click()}>Kamera</Button>
                   <Button size="sm" variant="secondary" onClick={() => document.getElementById("photo2File").click()}>Galeri</Button>
                 </div>

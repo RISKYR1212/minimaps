@@ -10,6 +10,8 @@ import Material from "./pages/Material";
 import Optimalisasi from "./pages/Optimalisasi";
 import Project from "./pages/Project";
 
+
+
 function App() {
   return (
     <>
@@ -46,6 +48,8 @@ function App() {
           <Route path="/material" element={<Material />} />
           <Route path="/optimalisasi" element={<Optimalisasi />} />
           <Route path="/project" element={<Project />} />
+          
+          
         </Routes>
       </Container>
     </>
