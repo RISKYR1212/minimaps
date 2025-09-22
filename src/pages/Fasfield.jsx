@@ -414,7 +414,7 @@ function Fasfield() {
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  // const [preview, setPreview] = useState(null);
+  const [preview, setPreview] = useState(null);
 
   const handleFileChange = async (e) => {
     let file = e.target.files[0];
@@ -501,53 +501,68 @@ function Fasfield() {
             </Row>
 
             {form.temuanList.map((t, i) => (
-              <Card key={i} className="mb-3">
-                <Card.Body>
-                  <Form.Group className="mb-2">
-                    <Form.Control
-                      placeholder="Deskripsi"
-                      value={t.deskripsi}
-                      onChange={(e) => updateTemuan(i, "deskripsi", e.target.value)}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-2">
-                    <Form.Control
-                      placeholder="Tindakan"
-                      value={t.tindakan}
-                      onChange={(e) => updateTemuan(i, "tindakan", e.target.value)}
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-2">
-                    <Form.Control
-                      placeholder="Hasil"
-                      value={t.hasil}
-                      onChange={(e) => updateTemuan(i, "hasil", e.target.value)}
-                    />
-                  </Form.Group>
+  <Card key={i} className="mb-3">
+    <Card.Body>
+      {/* Input teks */}
+      <Form.Group className="mb-2">
+        <Form.Control
+          placeholder="Deskripsi"
+          value={t.deskripsi}
+          onChange={(e) => updateTemuan(i, "deskripsi", e.target.value)}
+        />
+      </Form.Group>
 
-                  <Form.Group>
-  <Form.Label>Tambahkan Foto</Form.Label>
-  <div className="d-flex gap-2">
-    <Button size="sm" onClick={() => pickImage(i, false)}>Pilih dari Galeri</Button>
-    <Button size="sm" variant="secondary" onClick={() => pickImage(i, true)}>Ambil Kamera</Button>
-  </div>
-</Form.Group>
+      <Form.Group className="mb-2">
+        <Form.Control
+          placeholder="Tindakan"
+          value={t.tindakan}
+          onChange={(e) => updateTemuan(i, "tindakan", e.target.value)}
+        />
+      </Form.Group>
 
-{t.fotoThumb && (
-  <div className="mt-2">
-    <img
-      src={t.fotoThumb}
-      alt="preview"
-      className="mb-2 img-fluid rounded"
-      style={{ maxHeight: 260, objectFit: "contain" }}
-    />
-  </div>
-)}
-<div className="text-muted small mb-1">{t.statusGPS}</div>
+      <Form.Group className="mb-2">
+        <Form.Control
+          placeholder="Hasil"
+          value={t.hasil}
+          onChange={(e) => updateTemuan(i, "hasil", e.target.value)}
+        />
+      </Form.Group>
 
-                </Card.Body>
-              </Card>
-            ))}
+      {/* Input foto khusus temuan ini */}
+      <Form.Group className="mb-2">
+        <Form.Label>Foto Temuan {i + 1}</Form.Label>
+        <Form.Control
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={async (e) => {
+            let file = e.target.files[0];
+            if (!file) return;
+
+            file = await ensureJpeg(file);
+            const thumb = URL.createObjectURL(file);
+
+            // update field foto di temuan i
+            updateTemuan(i, "fotoFile", file);
+            updateTemuan(i, "fotoThumb", thumb);
+          }}
+        />
+      </Form.Group>
+
+      {/* Preview foto khusus temuan ini */}
+      {t.fotoThumb && (
+        <div className="mt-2">
+          <img
+            src={t.fotoThumb}
+            alt={`Preview temuan ${i + 1}`}
+            className="img-fluid rounded"
+            style={{ maxHeight: "260px", objectFit: "contain" }}
+          />
+        </div>
+      )}
+    </Card.Body>
+  </Card>
+))}
 
             <Button onClick={addTemuan} variant="outline-primary">
               Tambah Temuan
