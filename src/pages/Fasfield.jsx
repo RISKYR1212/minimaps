@@ -262,66 +262,73 @@ function Fasfield() {
   };
 
   // pickImage sekarang berada di dalam komponen (akses setForm)
-  const pickImage = async (idx, fromCamera = false) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/jpeg,image/png,image/heic,image/heif,image/webp";
-    if (fromCamera) input.capture = "environment";
+  // pickImage sekarang berada di dalam komponen (akses setForm)
+const pickImage = async (idx, fromCamera = false) => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/jpeg,image/png,image/heic,image/heif,image/webp";
+  if (fromCamera) input.capture = "environment";
 
-    input.onchange = async (e) => {
-      const target = e?.target;
-      let file = target?.files?.[0];
-      if (!file) {
-        if (target) target.value = "";
-        input.remove();
-        return;
-      }
+  input.onchange = async (e) => {
+    const target = e?.target;
+    let file = target?.files?.[0];
+    if (!file) {
+      if (target) target.value = "";
+      input.remove();
+      return;
+    }
 
+    try {
+      console.log("📂 File diupload:", file.type, file.name, file.size);
+
+      // 🔔 ALERT AKTIFKAN GPS
+      alert("Aktifkan GPS untuk mendapatkan lokasi dari foto.");
+
+      // konversi
+      file = await ensureJpeg(file);
+
+      // ambil GPS (EXIF) -> fallback
+      let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
+
+      // resize thumbnail (kalau gagal, turun ukuran)
+      let thumb = null;
       try {
-        console.log("📂 File diupload:", file.type, file.name, file.size);
-
-        // konversi
-        file = await ensureJpeg(file);
-
-        // ambil GPS (EXIF) -> fallback
-        let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
-
-        // resize thumbnail (kalau gagal, turun ukuran)
-        let thumb = null;
-        try {
-          thumb = await resizeWithOrientation(file, 1000, 0.7);
-        } catch (err) {
-          console.warn("Resize gagal, coba ukuran lebih kecil:", err);
-          try {
-            thumb = await resizeWithOrientation(file, 800, 0.7);
-          } catch (e) {
-            console.error("Resize benar-benar gagal:", e);
-            thumb = null;
-          }
-        }
-
-        setForm((prev) => {
-          const list = [...prev.temuanList];
-          list[idx] = {
-            ...list[idx],
-            fotoFile: file,
-            fotoThumb: thumb,
-            koordinat: koordinat || "",
-            statusGPS: koordinat ? "Lokasi berhasil diambil" : "Lokasi tidak tersedia, aktifkan GPS",
-          };
-          return { ...prev, temuanList: list };
-        });
+        thumb = await resizeWithOrientation(file, 1000, 0.7);
       } catch (err) {
-        console.error("Gagal memproses foto:", err);
-        alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid atau coba ukuran lebih kecil.");
-      } finally {
-        if (target) target.value = "";
-        input.remove();
+        console.warn("Resize gagal, coba ukuran lebih kecil:", err);
+        try {
+          thumb = await resizeWithOrientation(file, 800, 0.7);
+        } catch (e) {
+          console.error("Resize benar-benar gagal:", e);
+          thumb = null;
+        }
       }
-    };
 
-    input.click();
+      // update state
+      setForm((prev) => {
+        const list = [...prev.temuanList];
+        list[idx] = {
+          ...list[idx],
+          fotoFile: file,
+          fotoThumb: thumb,
+          koordinat: koordinat || "",
+          statusGPS: koordinat
+            ? "Lokasi berhasil diambil"
+            : "GPS tidak tersedia, pastikan GPS aktif.",
+        };
+        return { ...prev, temuanList: list };
+      });
+    } catch (err) {
+      console.error("Gagal memproses foto:", err);
+      alert("Foto gagal diproses. Gunakan JPG/PNG/HEIC yang valid atau coba ukuran lebih kecil.");
+    } finally {
+      if (target) target.value = "";
+      input.remove();
+    }
   };
+
+  input.click();
+};
 
   // PDF GENERATOR
   const generatePDFBlob = async () => {
