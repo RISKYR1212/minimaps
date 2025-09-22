@@ -414,7 +414,7 @@ function Fasfield() {
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const [preview, setPreview] = useState(null);
+  // const [preview, setPreview] = useState(null);
 
   const handleFileChange = async (e) => {
     let file = e.target.files[0];
@@ -526,30 +526,25 @@ function Fasfield() {
                   </Form.Group>
 
                   <Form.Group>
-                    <Form.Label>tambahkan foto</Form.Label>
-                    <Form.Control type="file" accept="image/*" onChange={handleFileChange} />
-                  </Form.Group>
+  <Form.Label>Tambahkan Foto</Form.Label>
+  <div className="d-flex gap-2">
+    <Button size="sm" onClick={() => pickImage(i, false)}>Pilih dari Galeri</Button>
+    <Button size="sm" variant="secondary" onClick={() => pickImage(i, true)}>Ambil Kamera</Button>
+  </div>
+</Form.Group>
 
-                  {preview && (
-                    <div className="mt-1">
-                      <img
-                        src={preview}
-                        alt="preview"
-                        style={{ maxWidth: "100%", borderRadius: "8px" }}
-                      />
-                    </div>
-                  )}
+{t.fotoThumb && (
+  <div className="mt-2">
+    <img
+      src={t.fotoThumb}
+      alt="preview"
+      className="mb-2 img-fluid rounded"
+      style={{ maxHeight: 260, objectFit: "contain" }}
+    />
+  </div>
+)}
+<div className="text-muted small mb-1">{t.statusGPS}</div>
 
-
-                  {t.fotoThumb ? (
-                    <img
-                      src={t.fotoThumb}
-                      alt="preview"
-                      className="mb-2 img-fluid rounded"
-                      style={{ maxHeight: 260, objectFit: "contain" }}
-                    />
-                  ) : null}
-                  <div className="text-muted small mb-1">{t.statusGPS}</div>
                 </Card.Body>
               </Card>
             ))}
