@@ -88,50 +88,31 @@ const getExifOrientation = (file) =>
   });
 
 //* UTIL: Konversi HEIC → JPEG
+
 async function ensureJpeg(file) {
   if (!file) return file;
   const type = (file.type || "").toLowerCase();
   const name = (file.name || "").toLowerCase();
 
-  const isHeic = type.includes("heic") || type.includes("heif") || name.endsWith(".heic") || name.endsWith(".heif");
-  const isPng = type.includes("png") || name.endsWith(".png");
-  const isWebp = type.includes("webp") || name.endsWith(".webp");
+  const isHeic =
+    type.includes("heic") ||
+    type.includes("heif") ||
+    name.endsWith(".heic") ||
+    name.endsWith(".heif");
 
-  try {
-    // HEIC/HEIF -> JPEG
-    if (isHeic) {
-      const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.7 });
-      return new File([converted], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+  if (isHeic) {
+    try {
+      const converted = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.8,
+      });
+      return new File([converted], name.replace(/\.(heic|heif)$/i, ".jpg"), {
+        type: "image/jpeg",
+      });
+    } catch (err) {
+      console.error("Gagal konversi HEIC:", err);
     }
-
-    // PNG -> JPEG
-    if (isPng) {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      canvas.getContext("2d").drawImage(bitmap, 0, 0);
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.8));
-      return new File([blob], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
-    }
-
-    // WebP -> JPEG
-    if (isWebp) {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      canvas.getContext("2d").drawImage(bitmap, 0, 0);
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.8));
-      return new File([blob], name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
-    }
-  } catch (err) {
-    console.warn("Konversi gagal, pakai file asli:", err);
-  }
-
-  // fallback terakhir: kasih warning kalau bukan jpg/png/heic/webp
-  if (!type.includes("jpeg") && !type.includes("jpg")) {
-    alert("Format foto tidak didukung penuh. Gunakan JPG/PNG/HEIC/WebP.");
   }
 
   return file;
@@ -433,6 +414,16 @@ const pickImage = async (idx, fromCamera = false) => {
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const [preview, setPreview] = useState(null);
+
+const handleFileChange = async (e) => {
+  let file = e.target.files[0];
+  if (!file) return;
+
+  file = await ensureJpeg(file); // convert jika HEIC
+  setPreview(URL.createObjectURL(file));
+};
+
 
   const submitToSheets = async () => {
     if (!endpoint) return alert("Endpoint Google Apps Script belum diatur.");
@@ -534,14 +525,21 @@ const pickImage = async (idx, fromCamera = false) => {
                     />
                   </Form.Group>
 
-                    <div className="d-flex gap-2 mb-2">
-                      <Button size="sm" onClick={() => pickImage(i, true)}>
-                        Kamera
-                      </Button>
-                    <Button size="sm" variant="secondary" onClick={() => pickImage(i, false)}>
-                      Galeri
-                    </Button>
-                  </div>
+                    <Form.Group>
+  <Form.Label>tambahkan foto</Form.Label>
+  <Form.Control type="file" accept="image/*" onChange={handleFileChange} />
+</Form.Group>
+
+{preview && (
+  <div className="mt-1">
+    <img
+      src={preview}
+      alt="preview"
+      style={{ maxWidth: "100%", borderRadius: "8px" }}
+    />
+  </div>
+)}
+
 
                   {t.fotoThumb ? (
                     <img
