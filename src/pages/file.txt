@@ -43,3 +43,4 @@ Goals nya
 - user role group & privileges 
 - export to autocad file / kmz
 - import kmz / autocad file
+- misahin perbulan buat report monthly

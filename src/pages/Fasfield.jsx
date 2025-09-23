@@ -205,6 +205,15 @@ function Fasfield() {
   const [data, setData] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
+   useEffect(() => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      () => console.log("✅ GPS ready"),
+      () => alert("⚠️ Aktifkan GPS & izinkan akses lokasi agar koordinat bisa disimpan.")
+    );
+  }
+}, []);
+
   // persist ke localStorage
   useEffect(() => {
     try {
@@ -371,12 +380,13 @@ function Fasfield() {
       });
 
       if (t.fotoThumb) {
-        try {
-          doc.addImage(t.fotoThumb, "JPEG", imageX, y, imageWidth, imageHeight);
-        } catch {
-          doc.text("Gagal tampilkan gambar", imageX, y);
-        }
-      }
+  try {
+    doc.addImage(t.fotoThumb, "JPEG", imageX, y, imageWidth, imageHeight);
+  } catch (err) {
+    console.warn("⚠️ gagal render gambar di PDF:", err);
+    doc.text("Gambar tidak bisa ditampilkan", imageX, y);
+  }
+}
       y += Math.max(lines.length * lineHeight, imageHeight) + 10;
     }
 
@@ -532,59 +542,59 @@ function Fasfield() {
                   <Form.Group className="mb-2">
                     <Form.Label>Foto Temuan {i + 1}</Form.Label>
                     <Form.Control
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      // saat pilih foto (dalam Form.Control onChange)
-                      onChange={async (e) => {
-                        let file = e.target.files[0];
-                        if (!file) return;
+  type="file"
+  accept="image/*"
+  capture="environment"
+  onChange={async (e) => {
+    let file = e.target.files[0];
+    if (!file) return;
 
-                        file = await ensureJpeg(file);
+    file = await ensureJpeg(file);
 
-                        // Ambil GPS dari EXIF → fallback ke GPS browser
-                        let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
+    // Ambil GPS dari EXIF → fallback ke GPS browser
+    let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
-                        // Buat thumbnail (resize + orientasi) dengan fallback
-                        let thumb = null;
-                        try {
-                          thumb = await resizeWithOrientation(file, 1000, 0.7);
-                        } catch (err) {
-                          console.warn("Resize gagal, fallback objectURL:", err);
-                          thumb = URL.createObjectURL(file);
-                        }
+    // Buat thumbnail (base64)
+    let thumb = null;
+    try {
+      thumb = await resizeWithOrientation(file, 1000, 0.7);
+    } catch (err) {
+      console.warn("Resize gagal, fallback pakai objectURL:", err);
+      thumb = URL.createObjectURL(file);
+    }
 
-                        // Update state
-                        updateTemuan(i, "fotoFile", file);
-                        updateTemuan(i, "fotoThumb", thumb);
-                        updateTemuan(i, "koordinat", koordinat || "");
-                        updateTemuan(
-                          i,
-                          "statusGPS",
-                          koordinat ? "Lokasi berhasil diambil" : "GPS tidak tersedia, pastikan GPS aktif."
-                        );
-                      }}
+    // Update state
+    updateTemuan(i, "fotoFile", file);
+    updateTemuan(i, "fotoThumb", thumb);
+    updateTemuan(i, "koordinat", koordinat || "");
+    updateTemuan(
+      i,
+      "statusGPS",
+      koordinat ? "Lokasi berhasil diambil" : "GPS tidak tersedia, pastikan GPS aktif."
+    );
 
-                    />
+    e.target.value = ""; // reset supaya bisa upload lagi
+  }}
+/>
+
 
                   </Form.Group>
 
                   {/* Preview foto khusus temuan ini */}
                   {/* Preview foto khusus temuan ini */}
                   {t.fotoThumb && (
-                    <div className="mt-2">
-                      <img
-                        src={t.fotoThumb}
-                        alt={`Preview temuan ${i + 1}`}
-                        className="img-fluid rounded"
-                        style={{ maxHeight: "260px", objectFit: "contain" }}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = URL.createObjectURL(t.fotoFile);
-                        }}
-                      />
-                    </div>
-                  )}
+  <div className="mt-2">
+    <img
+      src={t.fotoThumb}
+      alt={`Preview temuan ${i + 1}`}
+      className="img-fluid rounded"
+      style={{ maxHeight: "260px", objectFit: "contain" }}
+    />
+  </div>
+)}
+
+                    
+                 
 
                 </Card.Body>
               </Card>
