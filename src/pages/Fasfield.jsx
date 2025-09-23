@@ -535,6 +535,7 @@ function Fasfield() {
                       type="file"
                       accept="image/*"
                       capture="environment"
+                      // saat pilih foto (dalam Form.Control onChange)
                       onChange={async (e) => {
                         let file = e.target.files[0];
                         if (!file) return;
@@ -544,8 +545,14 @@ function Fasfield() {
                         // Ambil GPS dari EXIF → fallback ke GPS browser
                         let koordinat = (await getGPSFromImage(file)) || (await ambilGPSBrowser());
 
-                        // Buat thumbnail (resize + orientasi)
-                        const thumb = await resizeWithOrientation(file, 1000, 0.7);
+                        // Buat thumbnail (resize + orientasi) dengan fallback
+                        let thumb = null;
+                        try {
+                          thumb = await resizeWithOrientation(file, 1000, 0.7);
+                        } catch (err) {
+                          console.warn("Resize gagal, fallback objectURL:", err);
+                          thumb = URL.createObjectURL(file);
+                        }
 
                         // Update state
                         updateTemuan(i, "fotoFile", file);
@@ -557,10 +564,12 @@ function Fasfield() {
                           koordinat ? "Lokasi berhasil diambil" : "GPS tidak tersedia, pastikan GPS aktif."
                         );
                       }}
+
                     />
 
                   </Form.Group>
 
+                  {/* Preview foto khusus temuan ini */}
                   {/* Preview foto khusus temuan ini */}
                   {t.fotoThumb && (
                     <div className="mt-2">
@@ -569,9 +578,14 @@ function Fasfield() {
                         alt={`Preview temuan ${i + 1}`}
                         className="img-fluid rounded"
                         style={{ maxHeight: "260px", objectFit: "contain" }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = URL.createObjectURL(t.fotoFile);
+                        }}
                       />
                     </div>
                   )}
+
                 </Card.Body>
               </Card>
             ))}
@@ -592,10 +606,14 @@ function Fasfield() {
               const blob = await generatePDFBlob();
               const url = URL.createObjectURL(blob);
               setPdfPreviewUrl(url);
+
+              // revoke setelah beberapa detik untuk mencegah leak
+              setTimeout(() => URL.revokeObjectURL(url), 60000);
             }}
           >
             Lihat PDF
           </Button>
+
         </Col>
         <Col xs={12} md={3}>
           <Button
